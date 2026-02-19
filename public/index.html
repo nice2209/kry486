@@ -215,129 +215,173 @@
         <button class="ctab" onclick="showCasino('roulette')">🎡 룰렛</button>
       </div>
 
-      <!-- 바카라 LIVE TABLE -->
-      <div id="casino-baccarat" class="casino-game-area bac-live-wrap">
+      <!-- ═══════════════════════════════════════════════
+           에볼루션 바카라 라이브 테이블
+           ═══════════════════════════════════════════════ -->
+      <div id="casino-baccarat" class="casino-game-area ev-bac-root">
 
-        <!-- 상단 HUD: 비드로드 + 라운드 정보 -->
-        <div class="bac-hud">
-          <div class="bac-hud-left">
-            <span class="bac-round-label">ROUND <span id="bacRound">–</span></span>
-            <div class="bead-road" id="beadRoad"></div>
+        <!-- ① 상단 타이틀바 -->
+        <div class="ev-topbar">
+          <div class="ev-topbar-left">
+            <span class="ev-title">🎴 스피드 바카라</span>
+            <span class="ev-limits">₩1,000 – ₩10,000,000</span>
           </div>
-          <div class="bac-hud-right">
-            <div class="bac-phase-badge" id="bacPhaseBadge">대기중</div>
-            <div class="bac-countdown-wrap">
-              <svg class="bac-timer-svg" viewBox="0 0 44 44">
-                <circle class="bac-timer-bg" cx="22" cy="22" r="18"/>
-                <circle class="bac-timer-arc" id="bacTimerArc" cx="22" cy="22" r="18"
-                  stroke-dasharray="113" stroke-dashoffset="0"/>
+          <div class="ev-topbar-right">
+            <div class="ev-phase-badge" id="bacPhaseBadge">대기중</div>
+            <div class="ev-timer-wrap">
+              <svg viewBox="0 0 40 40" class="ev-timer-svg">
+                <circle class="ev-tc-bg" cx="20" cy="20" r="16"/>
+                <circle class="ev-tc-arc" id="bacTimerArc" cx="20" cy="20" r="16"
+                  stroke-dasharray="100.5" stroke-dashoffset="0"/>
               </svg>
-              <span class="bac-timer-num" id="bacTimerNum">–</span>
+              <span class="ev-timer-num" id="bacTimerNum">–</span>
             </div>
           </div>
         </div>
 
-        <!-- 메인 테이블 (그린 펠트) -->
-        <div class="bac-table">
+        <!-- ② 메인 영역: 좌채팅 + 중앙테이블 + 우비드로드 -->
+        <div class="ev-main">
 
-          <!-- 플레이어 존 -->
-          <div class="bac-zone bac-zone-player" id="bac-player-zone">
-            <div class="bac-zone-label">PLAYER <span class="bac-odd-label">1:1</span></div>
-            <div class="bac-cards-row" id="playerCards"></div>
-            <div class="bac-score-circle" id="playerTotal">–</div>
-            <div class="bac-bet-on-zone" id="bacBetPlayer">
-              <div class="bac-chip-stack" id="chipStackPlayer"></div>
+          <!-- 좌: 실시간 배팅 채팅 -->
+          <div class="ev-chat-col">
+            <div class="ev-chat-title">실시간 배팅</div>
+            <div class="ev-chat-list" id="evChatList"></div>
+          </div>
+
+          <!-- 중앙: 테이블 펠트 -->
+          <div class="ev-felt">
+
+            <!-- 카드 딜 영역 (상단 중앙) -->
+            <div class="ev-cards-area">
+              <!-- 플레이어 카드 (왼쪽으로 펼침) -->
+              <div class="ev-side ev-side-player">
+                <div class="ev-cards-row" id="playerCards"></div>
+              </div>
+
+              <!-- 중앙 점수판 -->
+              <div class="ev-score-center">
+                <div class="ev-score-wrap">
+                  <div class="ev-score-label ev-sl-player">PLAYER</div>
+                  <div class="ev-score-num" id="playerTotal">–</div>
+                </div>
+                <div class="ev-score-divider" id="bacResultAnnounce"></div>
+                <div class="ev-score-wrap">
+                  <div class="ev-score-num" id="bankerTotal">–</div>
+                  <div class="ev-score-label ev-sl-banker">BANKER</div>
+                </div>
+                <div class="natural-badge" id="naturalBadge" style="display:none">NATURAL</div>
+              </div>
+
+              <!-- 뱅커 카드 (오른쪽으로 펼침) -->
+              <div class="ev-side ev-side-banker">
+                <div class="ev-cards-row ev-cards-banker" id="bankerCards"></div>
+              </div>
+            </div>
+
+            <!-- 배팅 테이블 펠트 하단 -->
+            <div class="ev-bet-table">
+
+              <!-- 플레이어 보너스 -->
+              <div class="ev-bet-cell ev-cell-pp" onclick="placeBet('playerPair')" id="btnBetPP">
+                <div class="ev-cell-label">플레이어<br>보너스</div>
+                <div class="ev-cell-odds">25:1</div>
+                <div class="ev-cell-chips" id="chipStackPlayerPair"></div>
+                <div class="ev-cell-amt" id="dispPlayerPair"></div>
+              </div>
+
+              <!-- 플레이어 -->
+              <div class="ev-bet-cell ev-cell-player" onclick="placeBet('player')" id="btnBetPlayer">
+                <div class="ev-cell-top-label">1대1</div>
+                <div class="ev-cell-main-label">플레이어</div>
+                <div class="ev-cell-chips" id="chipStackPlayer"></div>
+                <div class="ev-cell-amt" id="dispPlayer"></div>
+              </div>
+
+              <!-- 타이 -->
+              <div class="ev-bet-cell ev-cell-tie" onclick="placeBet('tie')" id="btnBetTie">
+                <div class="ev-cell-main-label">무승부</div>
+                <div class="ev-cell-odds-big">8:1</div>
+                <div class="ev-cell-chips" id="chipStackTie"></div>
+                <div class="ev-cell-amt" id="dispTie"></div>
+              </div>
+
+              <!-- 뱅커 -->
+              <div class="ev-bet-cell ev-cell-banker" onclick="placeBet('banker')" id="btnBetBanker">
+                <div class="ev-cell-top-label">0.95대1</div>
+                <div class="ev-cell-main-label">뱅커</div>
+                <div class="ev-cell-chips" id="chipStackBanker"></div>
+                <div class="ev-cell-amt" id="dispBanker"></div>
+              </div>
+
+              <!-- 뱅커 보너스 -->
+              <div class="ev-bet-cell ev-cell-bp" onclick="placeBet('bankerPair')" id="btnBetBP">
+                <div class="ev-cell-label">뱅커<br>보너스</div>
+                <div class="ev-cell-odds">25:1</div>
+                <div class="ev-cell-chips" id="chipStackBankerPair"></div>
+                <div class="ev-cell-amt" id="dispBankerPair"></div>
+              </div>
+
+            </div><!-- ev-bet-table -->
+
+          </div><!-- ev-felt -->
+
+          <!-- 우: 비드로드 그리드 -->
+          <div class="ev-road-col">
+            <div class="ev-road-title">ROUND <span id="bacRound">–</span></div>
+            <!-- 빅로드 -->
+            <div class="ev-bigroad" id="evBigRoad"></div>
+            <!-- 비드로드 (작은 점) -->
+            <div class="ev-beadroad-wrap">
+              <div class="ev-road-sub-title">비드로드</div>
+              <div class="bead-road" id="beadRoad"></div>
             </div>
           </div>
 
-          <!-- 중앙 -->
-          <div class="bac-center-panel">
-            <div class="bac-logo-text">BAC<br>CAR<br>AT</div>
-            <div class="natural-badge" id="naturalBadge" style="display:none">NATURAL!</div>
-            <div class="bac-result-announce" id="bacResultAnnounce"></div>
-          </div>
+        </div><!-- ev-main -->
 
-          <!-- 타이 존 -->
-          <div class="bac-zone bac-zone-tie" id="bac-tie-zone">
-            <div class="bac-zone-label">TIE <span class="bac-odd-label">8:1</span></div>
-            <div class="bac-bet-on-zone" id="bacBetTie">
-              <div class="bac-chip-stack" id="chipStackTie"></div>
-            </div>
-          </div>
-
-          <!-- 뱅커 존 -->
-          <div class="bac-zone bac-zone-banker" id="bac-banker-zone">
-            <div class="bac-zone-label">BANKER <span class="bac-odd-label">0.95:1</span></div>
-            <div class="bac-cards-row" id="bankerCards"></div>
-            <div class="bac-score-circle" id="bankerTotal">–</div>
-            <div class="bac-bet-on-zone" id="bacBetBanker">
-              <div class="bac-chip-stack" id="chipStackBanker"></div>
-            </div>
-          </div>
-
-        </div><!-- end bac-table -->
-
-        <!-- 결과 오버레이 -->
-        <div class="bac-result-overlay hidden" id="bacResultOverlay">
-          <div class="bac-result-box" id="bacResultBox"></div>
+        <!-- ③ 결과 오버레이 -->
+        <div class="ev-result-overlay hidden" id="bacResultOverlay">
+          <div class="ev-result-box" id="bacResultBox"></div>
         </div>
 
-        <!-- 배팅 패널 -->
-        <div class="bac-bet-panel" id="bacBetPanel">
+        <!-- ④ 하단 배팅 컨트롤바 -->
+        <div class="ev-controlbar" id="bacBetPanel">
 
-          <!-- 칩 선택 -->
-          <div class="bac-chip-selector">
-            <div class="bac-chip-label">칩 선택</div>
-            <div class="bac-chips-row">
-              <div class="bac-chip chip-1k   active" onclick="selectChip(1000)"   data-val="1000">1K</div>
-              <div class="bac-chip chip-5k"        onclick="selectChip(5000)"   data-val="5000">5K</div>
-              <div class="bac-chip chip-10k"       onclick="selectChip(10000)"  data-val="10000">1만</div>
-              <div class="bac-chip chip-50k"       onclick="selectChip(50000)"  data-val="50000">5만</div>
-              <div class="bac-chip chip-100k"      onclick="selectChip(100000)" data-val="100000">10만</div>
+          <!-- 좌: WO 버튼 영역 (이전 배팅 재배팅) -->
+          <div class="ev-ctrl-left">
+            <button class="ev-wo-btn" onclick="clearBets()" title="배팅 취소">
+              <span class="ev-wo-icon">↩</span>
+              <span class="ev-wo-label">취소</span>
+            </button>
+            <button class="ev-wo-btn ev-wo-gold" onclick="reBet()" title="이전 배팅 재배팅">
+              <span class="ev-wo-icon">♻</span>
+              <span class="ev-wo-label">재배팅</span>
+            </button>
+          </div>
+
+          <!-- 중: 칩 선택 -->
+          <div class="ev-chips-center">
+            <div class="ev-chip chip-1k   active" onclick="selectChip(1000)"   data-val="1000"><span>1K</span></div>
+            <div class="ev-chip chip-5k"        onclick="selectChip(5000)"   data-val="5000"><span>5K</span></div>
+            <div class="ev-chip chip-10k"       onclick="selectChip(10000)"  data-val="10000"><span>1만</span></div>
+            <div class="ev-chip chip-50k"       onclick="selectChip(50000)"  data-val="50000"><span>5만</span></div>
+            <div class="ev-chip chip-100k"      onclick="selectChip(100000)" data-val="100000"><span>10만</span></div>
+            <div class="ev-chip chip-500k"      onclick="selectChip(500000)" data-val="500000"><span>50만</span></div>
+          </div>
+
+          <!-- 우: 더블 + 총배팅 -->
+          <div class="ev-ctrl-right">
+            <div class="ev-total-bet-info">
+              총 배팅<br><span id="bacTotalBetDisp">0</span>P
             </div>
+            <button class="ev-double-btn" onclick="doubleBets()">×2</button>
           </div>
 
-          <!-- 배팅존 버튼 -->
-          <div class="bac-bet-zones-btns">
-            <button class="bac-zone-btn player-btn" onclick="placeBet('player')" id="btnBetPlayer">
-              <span class="bzb-name">PLAYER</span>
-              <span class="bzb-amt" id="dispPlayer">0</span>
-            </button>
-            <button class="bac-zone-btn pair-btn" onclick="placeBet('playerPair')" id="btnBetPP">
-              <span class="bzb-name">P PAIR</span>
-              <span class="bzb-amt" id="dispPlayerPair">0</span>
-              <span class="bzb-odd">11:1</span>
-            </button>
-            <button class="bac-zone-btn tie-btn" onclick="placeBet('tie')" id="btnBetTie">
-              <span class="bzb-name">TIE</span>
-              <span class="bzb-amt" id="dispTie">0</span>
-              <span class="bzb-odd">8:1</span>
-            </button>
-            <button class="bac-zone-btn pair-btn" onclick="placeBet('bankerPair')" id="btnBetBP">
-              <span class="bzb-name">B PAIR</span>
-              <span class="bzb-amt" id="dispBankerPair">0</span>
-              <span class="bzb-odd">11:1</span>
-            </button>
-            <button class="bac-zone-btn banker-btn" onclick="placeBet('banker')" id="btnBetBanker">
-              <span class="bzb-name">BANKER</span>
-              <span class="bzb-amt" id="dispBanker">0</span>
-            </button>
-          </div>
+        </div><!-- ev-controlbar -->
 
-          <!-- 액션 버튼 -->
-          <div class="bac-action-row">
-            <button class="bac-action-btn clear-btn" onclick="clearBets()">↩ 취소</button>
-            <div class="bac-total-bet">
-              총 배팅: <span id="bacTotalBetDisp">0</span>P
-            </div>
-            <button class="bac-action-btn double-btn" onclick="doubleBets()">×2 더블</button>
-          </div>
-
-        </div><!-- end bac-bet-panel -->
-
-        <!-- 배팅 잠금 오버레이 -->
-        <div class="bac-locked-overlay hidden" id="bacLockedOverlay">
-          <div class="bac-locked-msg" id="bacLockedMsg">🃏 딜링중...</div>
+        <!-- ⑤ 배팅 잠금 오버레이 -->
+        <div class="ev-locked-overlay hidden" id="bacLockedOverlay">
+          <div class="ev-locked-msg" id="bacLockedMsg">🃏 배팅 마감</div>
         </div>
 
       </div><!-- end casino-baccarat -->

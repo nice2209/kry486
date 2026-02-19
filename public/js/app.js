@@ -578,7 +578,7 @@ function setBacPhase(phase, label) {
 function startBacTimer(seconds, color) {
   const arc = document.getElementById('bacTimerArc');
   const num = document.getElementById('bacTimerNum');
-  const total = 2 * Math.PI * 18; // circumference
+  const total = 2 * Math.PI * 16; // r=16 circumference ≈ 100.5
   if (arc) arc.style.stroke = color || '#22c55e';
 
   bacState.timer = seconds;
@@ -613,7 +613,7 @@ function stopBacTimer() {
 // ── 칩 선택 ───────────────────────────────────────────────────
 function selectChip(val) {
   bacState.selectedChip = val;
-  document.querySelectorAll('.bac-chip').forEach(c => {
+  document.querySelectorAll('.ev-chip').forEach(c => {
     c.classList.toggle('active', Number(c.dataset.val) === val);
   });
 }
@@ -628,12 +628,16 @@ function placeBet(type) {
   updateBetDisplay();
 
   // 칩 스택 시각화
-  const chipMap = { player:'chipStackPlayer', banker:'chipStackBanker', tie:'chipStackTie', playerPair:'chipStackPlayer', bankerPair:'chipStackBanker' };
-  const stackEl = document.getElementById(chipMap[type] || 'chipStackPlayer');
-  if (stackEl && stackEl.children.length < 5) {
-    const cls = ['c1k','c5k','c10k','c50k','c100k'][[1000,5000,10000,50000,100000].indexOf(bacState.selectedChip)] || 'c1k';
+  const chipStackMap = {
+    player:'chipStackPlayer', banker:'chipStackBanker', tie:'chipStackTie',
+    playerPair:'chipStackPlayerPair', bankerPair:'chipStackBankerPair'
+  };
+  const stackEl = document.getElementById(chipStackMap[type] || 'chipStackPlayer');
+  if (stackEl && stackEl.children.length < 6) {
+    const valIdx = [1000,5000,10000,50000,100000,500000].indexOf(bacState.selectedChip);
+    const cls = ['c1k','c5k','c10k','c50k','c100k','c500k'][valIdx] || 'c1k';
+    const labelMap = {1000:'1K',5000:'5K',10000:'1만',50000:'5만',100000:'10만',500000:'50만'};
     const chip = document.createElement('div');
-    const labelMap = {1000:'1K',5000:'5K',10000:'1만',50000:'5만',100000:'10만'};
     chip.className = `stacked-chip ${cls}`;
     chip.textContent = labelMap[bacState.selectedChip] || '?';
     stackEl.appendChild(chip);
@@ -643,12 +647,19 @@ function placeBet(type) {
 // ── 배팅 표시 업데이트 ────────────────────────────────────────
 function updateBetDisplay() {
   const b = bacState.bets;
-  const ids = { player:'dispPlayer', banker:'dispBanker', tie:'dispTie', playerPair:'dispPlayerPair', bankerPair:'dispBankerPair' };
-  const btns = { player:'btnBetPlayer', banker:'btnBetBanker', tie:'btnBetTie', playerPair:'btnBetPP', bankerPair:'btnBetBP' };
+  const ids = {
+    player:'dispPlayer', banker:'dispBanker', tie:'dispTie',
+    playerPair:'dispPlayerPair', bankerPair:'dispBankerPair'
+  };
   Object.keys(ids).forEach(k => {
     const el = document.getElementById(ids[k]);
-    if (el) el.textContent = b[k] ? b[k].toLocaleString() : '0';
-    const btn = document.getElementById(btns[k]);
+    if (el) el.textContent = b[k] ? b[k].toLocaleString() + 'P' : '';
+    // ev-bet-cell winner 클래스 (있을 때)
+    const cellMap = {
+      player:'btnBetPlayer', banker:'btnBetBanker', tie:'btnBetTie',
+      playerPair:'btnBetPP', bankerPair:'btnBetBP'
+    };
+    const btn = document.getElementById(cellMap[k]);
     if (btn) btn.classList.toggle('has-bet', b[k] > 0);
   });
   const total = Object.values(b).reduce((s,v)=>s+v,0);
@@ -660,11 +671,36 @@ function updateBetDisplay() {
 function clearBets() {
   if (bacState.phase !== BAC_PHASES.BETTING) return;
   bacState.bets = { player:0, banker:0, tie:0, playerPair:0, bankerPair:0 };
-  ['chipStackPlayer','chipStackBanker','chipStackTie'].forEach(id => {
+  ['chipStackPlayer','chipStackBanker','chipStackTie',
+   'chipStackPlayerPair','chipStackBankerPair'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });
   updateBetDisplay();
+}
+
+// ── 재배팅 (이전 배팅 복원) ───────────────────────────────────
+function reBet() {
+  if (bacState.phase !== BAC_PHASES.BETTING) return;
+  if (!bacState.lastBets) return;
+  bacState.bets = { ...bacState.lastBets };
+  updateBetDisplay();
+  // 칩 스택 시각화
+  Object.keys(bacState.bets).forEach(type => {
+    if (!bacState.bets[type]) return;
+    const stackMap = {
+      player:'chipStackPlayer', banker:'chipStackBanker', tie:'chipStackTie',
+      playerPair:'chipStackPlayerPair', bankerPair:'chipStackBankerPair'
+    };
+    const el = document.getElementById(stackMap[type]);
+    if (el) {
+      el.innerHTML = '';
+      const chip = document.createElement('div');
+      chip.className = 'stacked-chip c10k';
+      chip.textContent = (bacState.bets[type]/1000)+'K';
+      el.appendChild(chip);
+    }
+  });
 }
 
 // ── 더블 배팅 ─────────────────────────────────────────────────
@@ -679,14 +715,17 @@ function lockBetPanel(msg) {
   const ov = document.getElementById('bacLockedOverlay');
   const msgEl = document.getElementById('bacLockedMsg');
   if (ov) ov.classList.remove('hidden');
-  if (msgEl) msgEl.textContent = msg || '🃏 딜링중...';
-  // 버튼 비활성화
-  document.querySelectorAll('.bac-zone-btn,.bac-action-btn,.bac-chip').forEach(el => el.disabled = true);
+  if (msgEl) msgEl.textContent = msg || '🃏 배팅 마감';
+  document.querySelectorAll('.ev-bet-cell,.ev-wo-btn,.ev-chip,.ev-double-btn').forEach(el => {
+    el.style.pointerEvents = 'none';
+  });
 }
 function unlockBetPanel() {
   const ov = document.getElementById('bacLockedOverlay');
   if (ov) ov.classList.add('hidden');
-  document.querySelectorAll('.bac-zone-btn,.bac-action-btn,.bac-chip').forEach(el => el.disabled = false);
+  document.querySelectorAll('.ev-bet-cell,.ev-wo-btn,.ev-chip,.ev-double-btn').forEach(el => {
+    el.style.pointerEvents = '';
+  });
 }
 
 // ── 결과 오버레이 ─────────────────────────────────────────────
@@ -697,16 +736,14 @@ function showBacResult(res, earned) {
   const wname = res.winner === 'player' ? 'PLAYER WIN' : res.winner === 'banker' ? 'BANKER WIN' : 'TIE';
   const wcolor = res.winner === 'player' ? '#60a5fa' : res.winner === 'banker' ? '#f87171' : '#4ade80';
   let earnHTML = '';
-  if (earned > 0) earnHTML = `<div class="bac-result-earn">+${earned.toLocaleString()}P 획득!</div>`;
-  else if (earned < 0) earnHTML = `<div class="bac-result-earn" style="color:#ef4444">${earned.toLocaleString()}P</div>`;
-  else earnHTML = `<div class="bac-result-earn" style="color:rgba(255,255,255,.5)">배팅 없음</div>`;
+  if (earned > 0) earnHTML = `<div class="ev-res-earn" style="color:#4ade80">+${earned.toLocaleString()}P 획득!</div>`;
+  else if (earned < 0) earnHTML = `<div class="ev-res-earn" style="color:#f87171">${earned.toLocaleString()}P</div>`;
+  else earnHTML = `<div class="ev-res-earn" style="color:rgba(255,255,255,.4)">배팅 없음</div>`;
 
   box.innerHTML = `
-    <div class="bac-result-winner" style="color:${wcolor}">${wname}</div>
-    <div class="bac-result-detail">
-      P: ${res.player.total} &nbsp;|&nbsp; B: ${res.banker.total}
-      ${res.natural ? '&nbsp;|&nbsp; <span style="color:var(--gold)">NATURAL</span>' : ''}
-    </div>
+    <div class="ev-res-winner" style="color:${wcolor}">${wname}</div>
+    <div class="ev-res-detail">P: ${res.player.total} &nbsp;|&nbsp; B: ${res.banker.total}
+      ${res.natural ? '&nbsp;|&nbsp;<span style="color:#fbbf24">NATURAL</span>' : ''}</div>
     ${earnHTML}
   `;
   ov.classList.remove('hidden');
@@ -718,22 +755,23 @@ function hideBacResult() {
 
 // ── 카드 초기화 ───────────────────────────────────────────────
 function resetBacCards() {
-  const pe = document.getElementById('playerCards');
-  const be = document.getElementById('bankerCards');
-  if (pe) pe.innerHTML = '';
-  if (be) be.innerHTML = '';
+  ['playerCards','bankerCards'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
   const pt = document.getElementById('playerTotal');
   const bt = document.getElementById('bankerTotal');
-  if (pt) { pt.textContent = '–'; pt.className = 'bac-score-circle'; }
-  if (bt) { bt.textContent = '–'; bt.className = 'bac-score-circle'; }
+  if (pt) { pt.textContent = '–'; pt.className = 'ev-score-num'; }
+  if (bt) { bt.textContent = '–'; bt.className = 'ev-score-num'; }
   const nb = document.getElementById('naturalBadge');
   if (nb) nb.style.display = 'none';
   const ra = document.getElementById('bacResultAnnounce');
   if (ra) ra.textContent = '';
-  // 존 winner 클래스 제거
-  document.querySelectorAll('.bac-zone').forEach(z => z.classList.remove('winner-zone'));
+  // 승자 셀 클래스 제거
+  document.querySelectorAll('.ev-bet-cell').forEach(z => z.classList.remove('winner-zone'));
   // 칩 스택 초기화
-  ['chipStackPlayer','chipStackBanker','chipStackTie'].forEach(id => {
+  ['chipStackPlayer','chipStackBanker','chipStackTie',
+   'chipStackPlayerPair','chipStackBankerPair'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });
@@ -746,7 +784,57 @@ function updateBacScore(side, cards) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = total;
-  if (total >= 8) el.classList.add('high');
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+  if (total >= 8) el.style.color = '#fbbf24';
+}
+
+// ── 빅로드 업데이트 ───────────────────────────────────────────
+function updateBigRoad() {
+  const el = document.getElementById('evBigRoad');
+  if (!el) return;
+  el.innerHTML = bacState.history.slice(-36).map(r => {
+    const cls = r==='player'?'ev-br-p':r==='banker'?'ev-br-b':'ev-br-t';
+    const lbl = r==='player'?'P':r==='banker'?'B':'T';
+    return `<div class="ev-br-cell ${cls}">${lbl}</div>`;
+  }).join('');
+}
+
+// ── 실시간 배팅 채팅 시뮬레이션 ──────────────────────────────
+const FAKE_NICKS = ['user***21','win***99','lucky***','bet***5','pro***9','sky***1','ace***77','max***3'];
+const FAKE_SIDES = ['player','banker','tie','player','banker','player','banker'];
+let chatInterval = null;
+
+function addChatItem(nick, side, amt) {
+  const list = document.getElementById('evChatList');
+  if (!list) return;
+  const sideLabel = side==='player'?'플레이어':side==='banker'?'뱅커':'타이';
+  const sideClass = side==='player'?'ev-chat-side-p':side==='banker'?'ev-chat-side-b':'ev-chat-side-t';
+  const div = document.createElement('div');
+  div.className = 'ev-chat-item';
+  div.innerHTML = `<span class="ev-chat-nick">${nick}</span>
+    <span class="${sideClass}">${sideLabel}</span>
+    <span class="ev-chat-amt">${(amt/1000).toFixed(0)}K</span>`;
+  list.appendChild(div);
+  // 최대 30개 유지
+  while (list.children.length > 30) list.removeChild(list.firstChild);
+  list.scrollTop = list.scrollHeight;
+}
+
+function startFakeChat() {
+  if (chatInterval) return;
+  chatInterval = setInterval(() => {
+    if (bacState.phase !== BAC_PHASES.BETTING) return;
+    const nick = FAKE_NICKS[Math.floor(Math.random()*FAKE_NICKS.length)];
+    const side = FAKE_SIDES[Math.floor(Math.random()*FAKE_SIDES.length)];
+    const amounts = [1000,5000,10000,50000,100000];
+    const amt = amounts[Math.floor(Math.random()*amounts.length)];
+    addChatItem(nick, side, amt);
+  }, 800 + Math.random()*1200);
+}
+function stopFakeChat() {
+  if (chatInterval) { clearInterval(chatInterval); chatInterval = null; }
 }
 
 // ================================================================
@@ -841,18 +929,25 @@ async function runBaccaratDeal() {
   if (ptEl) { ptEl.textContent = res.player.total; ptEl.classList.add('flash'); }
   if (btEl) { btEl.textContent = res.banker.total; btEl.classList.add('flash'); }
 
-  // 승자 존 하이라이트
-  if (res.winner === 'player') document.getElementById('bac-player-zone')?.classList.add('winner-zone');
-  else if (res.winner === 'banker') document.getElementById('bac-banker-zone')?.classList.add('winner-zone');
-  else { document.getElementById('bac-player-zone')?.classList.add('winner-zone'); document.getElementById('bac-tie-zone')?.classList.add('winner-zone'); document.getElementById('bac-banker-zone')?.classList.add('winner-zone'); }
+  // 승자 존 하이라이트 (새 ev-bet-cell 구조)
+  const cellMap = { player:'btnBetPlayer', banker:'btnBetBanker', tie:'btnBetTie' };
+  if (res.winner === 'tie') {
+    ['btnBetPlayer','btnBetBanker','btnBetTie'].forEach(id => document.getElementById(id)?.classList.add('winner-zone'));
+  } else {
+    document.getElementById(cellMap[res.winner])?.classList.add('winner-zone');
+  }
+  // 페어 승리
+  if (res.pair && res.pair.player) document.getElementById('btnBetPP')?.classList.add('winner-zone');
+  if (res.pair && res.pair.banker) document.getElementById('btnBetBP')?.classList.add('winner-zone');
 
   // 이긴 카드 글로우
   const winSlots = res.winner === 'tie' ? [...slots.player,...slots.banker] : slots[res.winner] || [];
   winSlots.forEach(s => s.classList.add('win-glow'));
 
-  // 비드로드 업데이트
+  // 비드로드 + 빅로드 업데이트
   bacState.history.push(res.winner);
   updateBeadRoad();
+  updateBigRoad();
 
   // 포인트 업데이트 & 결과 계산
   await refreshPoints();
@@ -888,18 +983,23 @@ async function baccaratLoop() {
     if (roundEl) roundEl.textContent = bacState.round;
 
     // ── 배팅 페이즈 ────────────────────────────────────────
+    // 이전 배팅 저장 (재배팅용)
+    const totalPrev = Object.values(bacState.bets).reduce((s,v)=>s+v,0);
+    if (totalPrev > 0) bacState.lastBets = { ...bacState.bets };
     bacState.bets = { player:0, banker:0, tie:0, playerPair:0, bankerPair:0 };
     updateBetDisplay();
     hideBacResult();
     setBacPhase(BAC_PHASES.BETTING, '배팅중');
     unlockBetPanel();
     startBacTimer(BAC_BET_TIME, '#22c55e');
+    startFakeChat();
 
     // BAC_BET_TIME초 대기
     await sleep(BAC_BET_TIME * 1000);
 
     // ── 배팅 마감 ───────────────────────────────────────────
-    lockBetPanel('⏳ 배팅 마감!');
+    stopFakeChat();
+    lockBetPanel('⏳ 배팅 마감');
     stopBacTimer();
     await sleep(800);
 
