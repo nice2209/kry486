@@ -81,61 +81,118 @@ function applyThirdCardRule(playerCards, bankerCards) {
 }
 
 router.post('/baccarat', authMiddleware, (req, res) => {
-  const { bet_type, amount } = req.body; // bet_type: 'player'|'banker'|'tie'
-  const amt = parseInt(amount);
-  const settings = db.get('settings').value();
-  if (!amt || amt < settings.min_bet) return res.status(400).json({ error: `최소 배팅은 ${settings.min_bet.toLocaleString()}P` });
-  if (amt > settings.max_bet) return res.status(400).json({ error: `최대 배팅은 ${settings.max_bet.toLocaleString()}P` });
+  // bet_type: 'player'|'banker'|'tie'|'playerPair'|'bankerPair'
+  // extra_bets: { player, banker, tie, playerPair, bankerPair }
+  // demo: true → 포인트 차감 없이 카드만 딜
+  const { bet_type, amount, extra_bets, demo } = req.body;
+  const isDemo = demo === true || parseInt(amount) === 0;
 
   const user = db.get('users').find({ id: req.user.id }).value();
-  if (user.points < amt) return res.status(400).json({ error: '포인트 부족' });
+  const settings = db.get('settings').value();
 
-  // 초기 2장씩 딜
+  // ── 배팅 금액 파싱 ──────────────────────────────────────────
+  // extra_bets가 있으면 전체 배팅 처리, 없으면 단일 bet_type/amount
+  let bets = {}; // { player, banker, tie, playerPair, bankerPair }
+  if (extra_bets && typeof extra_bets === 'object') {
+    bets = {
+      player:     Math.max(0, parseInt(extra_bets.player)     || 0),
+      banker:     Math.max(0, parseInt(extra_bets.banker)     || 0),
+      tie:        Math.max(0, parseInt(extra_bets.tie)        || 0),
+      playerPair: Math.max(0, parseInt(extra_bets.playerPair) || 0),
+      bankerPair: Math.max(0, parseInt(extra_bets.bankerPair) || 0),
+    };
+  } else if (!isDemo) {
+    const amt = parseInt(amount);
+    if (!amt || amt < settings.min_bet) return res.status(400).json({ error: `최소 배팅은 ${settings.min_bet.toLocaleString()}P` });
+    if (amt > settings.max_bet) return res.status(400).json({ error: `최대 배팅은 ${settings.max_bet.toLocaleString()}P` });
+    bets[bet_type] = amt;
+  }
+
+  const totalBet = Object.values(bets).reduce((s, v) => s + v, 0);
+
+  if (!isDemo) {
+    if (totalBet < 1) return res.status(400).json({ error: '배팅 금액이 없습니다.' });
+    if (user.points < totalBet) return res.status(400).json({ error: '포인트 부족' });
+  }
+
+  // ── 카드 딜 + 3번째 카드 규칙 ──────────────────────────────
   let playerCards = [drawCard(), drawCard()];
   let bankerCards = [drawCard(), drawCard()];
-
-  // 정통 3rd card rule 적용
-  const result = applyThirdCardRule(playerCards, bankerCards);
-  playerCards = result.playerCards;
-  bankerCards = result.bankerCards;
+  const dealt = applyThirdCardRule(playerCards, bankerCards);
+  playerCards = dealt.playerCards;
+  bankerCards = dealt.bankerCards;
 
   const playerTotal = handTotal(playerCards);
   const bankerTotal = handTotal(bankerCards);
   const winner = playerTotal > bankerTotal ? 'player' : bankerTotal > playerTotal ? 'banker' : 'tie';
+  const isNatural = playerTotal >= 8 || bankerTotal >= 8;
 
-  // 배당 계산
-  let multiplier = 0;
-  if (bet_type === winner) {
-    if (winner === 'banker') multiplier = 1.95;   // 뱅커 수수료 5%
-    else if (winner === 'player') multiplier = 2.00;
-    else multiplier = 9.00; // 타이 배당
+  // ── 페어 체크 ────────────────────────────────────────────────
+  const playerPairWon = playerCards.length >= 2 && playerCards[0].point === playerCards[1].point;
+  const bankerPairWon = bankerCards.length >= 2 && bankerCards[0].point === bankerCards[1].point;
+
+  // ── 배당 계산 ────────────────────────────────────────────────
+  // 배당률: player×2, banker×1.95, tie×9, pair×12
+  let totalWin = 0;
+  const betResults = {};
+
+  const calcWin = (type, betAmt) => {
+    if (!betAmt) return 0;
+    let won = false;
+    let mult = 0;
+    if (type === 'player')     { won = winner === 'player'; mult = 2.00; }
+    if (type === 'banker')     { won = winner === 'banker'; mult = 1.95; }
+    if (type === 'tie')        { won = winner === 'tie';    mult = 9.00; }
+    if (type === 'playerPair') { won = playerPairWon;       mult = 12.00; }
+    if (type === 'bankerPair') { won = bankerPairWon;       mult = 12.00; }
+    const win = won ? Math.floor(betAmt * mult) : 0;
+    betResults[type] = { bet: betAmt, won, win };
+    return win;
+  };
+
+  if (!isDemo) {
+    Object.keys(bets).forEach(k => { totalWin += calcWin(k, bets[k]); });
   }
 
-  const winAmount = Math.floor(amt * multiplier);
-  const netChange = winAmount - amt;
-  const newPoints = user.points - amt + winAmount;
+  const netChange = totalWin - totalBet;
+  const newPoints = isDemo ? user.points : user.points - totalBet + totalWin;
 
-  db.get('users').find({ id: user.id }).assign({
-    points: newPoints,
-    total_bet: user.total_bet + amt,
-    total_won: user.total_won + winAmount
-  }).write();
+  // ── DB 저장 ──────────────────────────────────────────────────
+  if (!isDemo && totalBet > 0) {
+    db.get('users').find({ id: user.id }).assign({
+      points: newPoints,
+      total_bet: user.total_bet + totalBet,
+      total_won: user.total_won + totalWin
+    }).write();
 
-  const betName = bet_type === 'player' ? '플레이어' : bet_type === 'banker' ? '뱅커' : '타이';
-  db.get('transactions').push({
-    id: uuidv4(), user_id: user.id, type: winAmount > 0 ? 'win' : 'loss',
-    amount: netChange, balance_after: newPoints,
-    desc: `바카라 - ${betName} 배팅 ${winAmount > 0 ? '당첨' : '낙첨'}`,
-    created_at: new Date().toISOString()
-  }).write();
+    const betDesc = Object.keys(bets).filter(k => bets[k] > 0)
+      .map(k => ({ player:'플레이어', banker:'뱅커', tie:'타이', playerPair:'플레이어페어', bankerPair:'뱅커페어' }[k]))
+      .join('+');
+    db.get('transactions').push({
+      id: uuidv4(), user_id: user.id,
+      type: totalWin > totalBet ? 'win' : 'loss',
+      amount: netChange, balance_after: newPoints,
+      desc: `바카라 [${betDesc}] - ${winner === 'player' ? '플레이어' : winner === 'banker' ? '뱅커' : '타이'} 승`,
+      created_at: new Date().toISOString()
+    }).write();
+  }
+
+  // 주 배팅 기준 won/win_amount (레거시 호환)
+  const mainType = Object.keys(bets).find(k => bets[k] > 0) || bet_type || 'player';
+  const mainWon = betResults[mainType] ? betResults[mainType].won : false;
 
   res.json({
-    success: true, winner, bet_type,
+    success: true, winner, bet_type: mainType,
     player: { cards: playerCards, total: playerTotal },
     banker: { cards: bankerCards, total: bankerTotal },
-    won: bet_type === winner, win_amount: winAmount,
-    net_change: netChange, points: newPoints,
-    natural: playerTotal >= 8 || bankerTotal >= 8
+    won: totalWin > 0,
+    win_amount: totalWin,
+    net_change: netChange,
+    points: newPoints,
+    natural: isNatural,
+    pair: { player: playerPairWon, banker: bankerPairWon },
+    bet_results: betResults,
+    demo: isDemo
   });
 });
 

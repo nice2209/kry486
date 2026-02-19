@@ -416,6 +416,7 @@ function showCasino(game) {
     b.classList.toggle('active', games[i] === game);
   });
   if (game === 'roulette') drawRoulette();
+  if (game === 'baccarat') initBaccaratLive();
 }
 
 function selectBetType(el) {
@@ -428,22 +429,34 @@ function setAmount(n) { document.getElementById('baccaratAmount').value = n; }
 function setSlotsAmount(n) { document.getElementById('slotsAmount').value = n; }
 function setRouletteAmount(n) { document.getElementById('rouletteAmount').value = n; }
 
-// ---- BACCARAT ----
-let bacBeadHistory = []; // 비드로드 히스토리
+// ================================================================
+//  BACCARAT LIVE TABLE – Evolution Style
+//  자동 라운드 루프:
+//   [배팅 20초] → [딜링] → [결과 5초] → [다음 라운드]
+// ================================================================
 
-function toggleBacRule() {
-  const el = document.getElementById('baccaratRuleDetail');
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+// ── 상태 ──────────────────────────────────────────────────────
+const BAC_PHASES = { WAITING:'waiting', BETTING:'betting', DEALING:'dealing', RESULT:'result' };
+let bacState = {
+  phase: BAC_PHASES.WAITING,
+  round: 0,
+  timer: 0,
+  timerInterval: null,
+  bets: { player:0, banker:0, tie:0, playerPair:0, bankerPair:0 },
+  selectedChip: 1000,
+  history: [],
+  running: false,
+  dealingInProgress: false,
+};
 
+// ── 비드로드 ──────────────────────────────────────────────────
 function updateBeadRoad() {
   const el = document.getElementById('beadRoad');
   if (!el) return;
-  el.innerHTML = bacBeadHistory.slice(-20).map(r => {
-    const cls = r === 'player' ? 'bead-p' : r === 'banker' ? 'bead-b' : 'bead-t';
-    const label = r === 'player' ? 'P' : r === 'banker' ? 'B' : 'T';
-    return `<div class="bead ${cls}">${label}</div>`;
+  el.innerHTML = bacState.history.slice(-24).map(r => {
+    const cls = r==='player'?'bead-p':r==='banker'?'bead-b':'bead-t';
+    const lbl = r==='player'?'P':r==='banker'?'B':'T';
+    return `<div class="bead ${cls}">${lbl}</div>`;
   }).join('');
 }
 
@@ -551,177 +564,373 @@ function updateLiveScore(side, revealedCards) {
   el.classList.add('flash');
 }
 
-// ── 딜링 상태 텍스트 ─────────────────────────────────────────
-function setBacStatus(msg) {
-  const rb = document.getElementById('baccaratResult');
-  if (rb) { rb.className = 'result-box'; rb.innerHTML = `<span style="color:var(--text-muted)">${msg}</span>`; }
-}
-
-// ================================================================
-//  메인 playBaccarat – 에볼루션 타이밍 완전 재현
-//  타임라인 (에볼루션 실제 기준):
-//   0.0s  배팅 마감 / API 호출
-//   0.5s  P1 뒷면 등장
-//   0.8s  B1 뒷면 등장
-//   1.1s  P2 뒷면 등장
-//   1.4s  B2 뒷면 등장
-//   1.9s  P1 플립 시작 (0.9s)
-//   3.0s  B1 플립 시작
-//   4.1s  P2 플립 시작
-//   5.2s  B2 플립 시작
-//   6.5s  (내추럴 → 바로 결과) or 3번째 카드
-//   7.5s  결과 표시
-// ================================================================
-async function playBaccarat() {
-  if (!token) { openModal('loginModal'); return; }
-  const amt = document.getElementById('baccaratAmount').value;
-  if (!amt || amt < 1000) { showToast('배팅금액을 입력하세요.', 'error'); return; }
-
-  const btn = document.getElementById('baccaratBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-hourglass-half fa-spin"></i> 배팅마감'; }
-
-  // ── 초기화 ────────────────────────────────────────────────
-  const playerEl = document.getElementById('playerCards');
-  const bankerEl = document.getElementById('bankerCards');
-  playerEl.innerHTML = '';
-  bankerEl.innerHTML = '';
-  document.getElementById('playerTotal').textContent = '-';
-  document.getElementById('bankerTotal').textContent = '-';
-  document.getElementById('baccarat-player-side').classList.remove('winner');
-  document.getElementById('baccarat-banker-side').classList.remove('winner');
-  const naturalBadge = document.getElementById('naturalBadge');
-  if (naturalBadge) naturalBadge.style.display = 'none';
-  setBacStatus('🃏 배팅 마감 중...');
-
-  try {
-    await sleep(600);
-    // ── API 호출 ──────────────────────────────────────────
-    const res = await api('POST', '/api/casino/baccarat', { bet_type: selectedBetType, amount: amt });
-    const pCards = res.player.cards;
-    const bCards = res.banker.cards;
-    const slots = { player: [], banker: [] };
-
-    setBacStatus('🃏 딜링 중...');
-    if (btn) btn.innerHTML = '<i class="fa fa-cards fa-spin"></i> 딜링중...';
-
-    // ── STEP 1: 뒷면 4장 순서대로 배치 (P1→B1→P2→B2) ────
-    // P1 등장
-    await sleep(500);
-    const ps0 = createCardSlot('ps-0'); playerEl.appendChild(ps0); slots.player.push(ps0);
-
-    // B1 등장
-    await sleep(300);
-    const bs0 = createCardSlot('bs-0'); bankerEl.appendChild(bs0); slots.banker.push(bs0);
-
-    // P2 등장
-    await sleep(300);
-    const ps1 = createCardSlot('ps-1'); playerEl.appendChild(ps1); slots.player.push(ps1);
-
-    // B2 등장
-    await sleep(300);
-    const bs1 = createCardSlot('bs-1'); bankerEl.appendChild(bs1); slots.banker.push(bs1);
-
-    // ── 딜링 완료 후 잠깐 정지 (에볼루션 특유의 긴장감) ──
-    await sleep(600);
-
-    // ── STEP 2: 한 장씩 플립 (P1→B1→P2→B2) ─────────────
-    setBacStatus('');
-
-    // P1 플립
-    await flipCard(ps0, pCards[0]);
-    updateLiveScore('player', [pCards[0]]);
-    await sleep(200);
-
-    // B1 플립
-    await flipCard(bs0, bCards[0]);
-    updateLiveScore('banker', [bCards[0]]);
-    await sleep(200);
-
-    // P2 플립
-    await flipCard(ps1, pCards[1]);
-    updateLiveScore('player', pCards.slice(0, 2));
-    await sleep(200);
-
-    // B2 플립
-    await flipCard(bs1, bCards[1]);
-    updateLiveScore('banker', bCards.slice(0, 2));
-    await sleep(500);
-
-    // ── 내추럴 체크 ───────────────────────────────────────
-    const pNow = pCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
-    const bNow = bCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
-    if (pNow >= 8 || bNow >= 8) {
-      if (naturalBadge) naturalBadge.style.display = 'block';
-      setBacStatus('✨ NATURAL!');
-      await sleep(1200);
-    }
-
-    // ── STEP 3: 3번째 카드 (있을 경우) ───────────────────
-    if (pCards[2]) {
-      setBacStatus('🃏 플레이어 추가 카드...');
-      await sleep(400);
-      const ps2 = createCardSlot('ps-2'); playerEl.appendChild(ps2); slots.player.push(ps2);
-      await sleep(400);
-      await flipCard(ps2, pCards[2]);
-      updateLiveScore('player', pCards);
-      await sleep(300);
-    }
-
-    if (bCards[2]) {
-      setBacStatus('🃏 뱅커 추가 카드...');
-      await sleep(400);
-      const bs2 = createCardSlot('bs-2'); bankerEl.appendChild(bs2); slots.banker.push(bs2);
-      await sleep(400);
-      await flipCard(bs2, bCards[2]);
-      updateLiveScore('banker', bCards);
-      await sleep(300);
-    }
-
-    // ── STEP 4: 최종 점수 확정 ───────────────────────────
-    await sleep(400);
-    document.getElementById('playerTotal').textContent = res.player.total;
-    document.getElementById('bankerTotal').textContent = res.banker.total;
-    document.getElementById('playerTotal').classList.add('flash');
-    document.getElementById('bankerTotal').classList.add('flash');
-
-    await sleep(600);
-
-    // ── STEP 5: 승자 강조 + 카드 글로우 ─────────────────
-    const pSide = document.getElementById('baccarat-player-side');
-    const bSide = document.getElementById('baccarat-banker-side');
-    if (res.winner === 'player' || res.winner === 'tie') pSide.classList.add('winner');
-    if (res.winner === 'banker' || res.winner === 'tie') bSide.classList.add('winner');
-
-    const winSlots = res.winner === 'tie' ? [...slots.player,...slots.banker] : slots[res.winner];
-    winSlots.forEach(s => s.classList.add('win-glow'));
-
-    // ── 비드로드 업데이트 ────────────────────────────────
-    bacBeadHistory.push(res.winner);
-    updateBeadRoad();
-
-    // ── 결과 메시지 ──────────────────────────────────────
-    const rb = document.getElementById('baccaratResult');
-    rb.className = 'result-box ' + (res.won ? 'won' : 'lost');
-    const winnerName = res.winner === 'player' ? '👤 플레이어' : res.winner === 'banker' ? '🏦 뱅커' : '🤝 타이';
-    rb.innerHTML = res.won
-      ? `🎉 <b>${winnerName} 승리!</b> &nbsp;<span style="color:var(--gold);font-size:18px">+${res.win_amount.toLocaleString()}P</span> ${res.natural ? '&nbsp;<span style="color:var(--gold)">✨ NATURAL</span>' : ''}`
-      : `😢 낙첨 &nbsp;<span style="opacity:.6;font-size:13px">${winnerName} 승 &nbsp;|&nbsp; P:${res.player.total} &nbsp; B:${res.banker.total}</span>`;
-
-    if (res.won) showWinEffect(res.win_amount);
-    await refreshPoints();
-
-  } catch (e) {
-    document.getElementById('baccaratResult').className = 'result-box lost';
-    document.getElementById('baccaratResult').textContent = e.message;
-    showToast(e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-play"></i> 게임 시작'; }
+// ── 페이즈 UI 업데이트 ────────────────────────────────────────
+function setBacPhase(phase, label) {
+  bacState.phase = phase;
+  const badge = document.getElementById('bacPhaseBadge');
+  if (badge) {
+    badge.textContent = label;
+    badge.className = 'bac-phase-badge ' + phase;
   }
 }
 
-// 레거시 호환
+// ── 타이머 시작 ───────────────────────────────────────────────
+function startBacTimer(seconds, color) {
+  const arc = document.getElementById('bacTimerArc');
+  const num = document.getElementById('bacTimerNum');
+  const total = 2 * Math.PI * 18; // circumference
+  if (arc) arc.style.stroke = color || '#22c55e';
+
+  bacState.timer = seconds;
+  if (bacState.timerInterval) clearInterval(bacState.timerInterval);
+
+  const update = () => {
+    if (num) num.textContent = bacState.timer;
+    const offset = total * (1 - bacState.timer / seconds);
+    if (arc) arc.style.strokeDashoffset = offset;
+  };
+  update();
+
+  bacState.timerInterval = setInterval(() => {
+    bacState.timer--;
+    update();
+    if (bacState.timer <= 0) {
+      clearInterval(bacState.timerInterval);
+      bacState.timerInterval = null;
+    }
+  }, 1000);
+}
+
+function stopBacTimer() {
+  if (bacState.timerInterval) clearInterval(bacState.timerInterval);
+  bacState.timerInterval = null;
+  const arc = document.getElementById('bacTimerArc');
+  const num = document.getElementById('bacTimerNum');
+  if (arc) arc.style.strokeDashoffset = 113;
+  if (num) num.textContent = '–';
+}
+
+// ── 칩 선택 ───────────────────────────────────────────────────
+function selectChip(val) {
+  bacState.selectedChip = val;
+  document.querySelectorAll('.bac-chip').forEach(c => {
+    c.classList.toggle('active', Number(c.dataset.val) === val);
+  });
+}
+
+// ── 배팅 추가 ─────────────────────────────────────────────────
+function placeBet(type) {
+  if (!token) { openModal('loginModal'); return; }
+  if (bacState.phase !== BAC_PHASES.BETTING) {
+    showToast('배팅 시간이 아닙니다.', 'error'); return;
+  }
+  bacState.bets[type] = (bacState.bets[type] || 0) + bacState.selectedChip;
+  updateBetDisplay();
+
+  // 칩 스택 시각화
+  const chipMap = { player:'chipStackPlayer', banker:'chipStackBanker', tie:'chipStackTie', playerPair:'chipStackPlayer', bankerPair:'chipStackBanker' };
+  const stackEl = document.getElementById(chipMap[type] || 'chipStackPlayer');
+  if (stackEl && stackEl.children.length < 5) {
+    const cls = ['c1k','c5k','c10k','c50k','c100k'][[1000,5000,10000,50000,100000].indexOf(bacState.selectedChip)] || 'c1k';
+    const chip = document.createElement('div');
+    const labelMap = {1000:'1K',5000:'5K',10000:'1만',50000:'5만',100000:'10만'};
+    chip.className = `stacked-chip ${cls}`;
+    chip.textContent = labelMap[bacState.selectedChip] || '?';
+    stackEl.appendChild(chip);
+  }
+}
+
+// ── 배팅 표시 업데이트 ────────────────────────────────────────
+function updateBetDisplay() {
+  const b = bacState.bets;
+  const ids = { player:'dispPlayer', banker:'dispBanker', tie:'dispTie', playerPair:'dispPlayerPair', bankerPair:'dispBankerPair' };
+  const btns = { player:'btnBetPlayer', banker:'btnBetBanker', tie:'btnBetTie', playerPair:'btnBetPP', bankerPair:'btnBetBP' };
+  Object.keys(ids).forEach(k => {
+    const el = document.getElementById(ids[k]);
+    if (el) el.textContent = b[k] ? b[k].toLocaleString() : '0';
+    const btn = document.getElementById(btns[k]);
+    if (btn) btn.classList.toggle('has-bet', b[k] > 0);
+  });
+  const total = Object.values(b).reduce((s,v)=>s+v,0);
+  const td = document.getElementById('bacTotalBetDisp');
+  if (td) td.textContent = total.toLocaleString();
+}
+
+// ── 배팅 취소 ─────────────────────────────────────────────────
+function clearBets() {
+  if (bacState.phase !== BAC_PHASES.BETTING) return;
+  bacState.bets = { player:0, banker:0, tie:0, playerPair:0, bankerPair:0 };
+  ['chipStackPlayer','chipStackBanker','chipStackTie'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+  updateBetDisplay();
+}
+
+// ── 더블 배팅 ─────────────────────────────────────────────────
+function doubleBets() {
+  if (bacState.phase !== BAC_PHASES.BETTING) return;
+  Object.keys(bacState.bets).forEach(k => { bacState.bets[k] *= 2; });
+  updateBetDisplay();
+}
+
+// ── 배팅 잠금/해제 ───────────────────────────────────────────
+function lockBetPanel(msg) {
+  const ov = document.getElementById('bacLockedOverlay');
+  const msgEl = document.getElementById('bacLockedMsg');
+  if (ov) ov.classList.remove('hidden');
+  if (msgEl) msgEl.textContent = msg || '🃏 딜링중...';
+  // 버튼 비활성화
+  document.querySelectorAll('.bac-zone-btn,.bac-action-btn,.bac-chip').forEach(el => el.disabled = true);
+}
+function unlockBetPanel() {
+  const ov = document.getElementById('bacLockedOverlay');
+  if (ov) ov.classList.add('hidden');
+  document.querySelectorAll('.bac-zone-btn,.bac-action-btn,.bac-chip').forEach(el => el.disabled = false);
+}
+
+// ── 결과 오버레이 ─────────────────────────────────────────────
+function showBacResult(res, earned) {
+  const ov = document.getElementById('bacResultOverlay');
+  const box = document.getElementById('bacResultBox');
+  if (!ov || !box) return;
+  const wname = res.winner === 'player' ? 'PLAYER WIN' : res.winner === 'banker' ? 'BANKER WIN' : 'TIE';
+  const wcolor = res.winner === 'player' ? '#60a5fa' : res.winner === 'banker' ? '#f87171' : '#4ade80';
+  let earnHTML = '';
+  if (earned > 0) earnHTML = `<div class="bac-result-earn">+${earned.toLocaleString()}P 획득!</div>`;
+  else if (earned < 0) earnHTML = `<div class="bac-result-earn" style="color:#ef4444">${earned.toLocaleString()}P</div>`;
+  else earnHTML = `<div class="bac-result-earn" style="color:rgba(255,255,255,.5)">배팅 없음</div>`;
+
+  box.innerHTML = `
+    <div class="bac-result-winner" style="color:${wcolor}">${wname}</div>
+    <div class="bac-result-detail">
+      P: ${res.player.total} &nbsp;|&nbsp; B: ${res.banker.total}
+      ${res.natural ? '&nbsp;|&nbsp; <span style="color:var(--gold)">NATURAL</span>' : ''}
+    </div>
+    ${earnHTML}
+  `;
+  ov.classList.remove('hidden');
+}
+function hideBacResult() {
+  const ov = document.getElementById('bacResultOverlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+// ── 카드 초기화 ───────────────────────────────────────────────
+function resetBacCards() {
+  const pe = document.getElementById('playerCards');
+  const be = document.getElementById('bankerCards');
+  if (pe) pe.innerHTML = '';
+  if (be) be.innerHTML = '';
+  const pt = document.getElementById('playerTotal');
+  const bt = document.getElementById('bankerTotal');
+  if (pt) { pt.textContent = '–'; pt.className = 'bac-score-circle'; }
+  if (bt) { bt.textContent = '–'; bt.className = 'bac-score-circle'; }
+  const nb = document.getElementById('naturalBadge');
+  if (nb) nb.style.display = 'none';
+  const ra = document.getElementById('bacResultAnnounce');
+  if (ra) ra.textContent = '';
+  // 존 winner 클래스 제거
+  document.querySelectorAll('.bac-zone').forEach(z => z.classList.remove('winner-zone'));
+  // 칩 스택 초기화
+  ['chipStackPlayer','chipStackBanker','chipStackTie'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+}
+
+// ── 점수 업데이트 ─────────────────────────────────────────────
+function updateBacScore(side, cards) {
+  const total = cards.reduce((s,c)=>s+cardPoint(c),0) % 10;
+  const id = side === 'player' ? 'playerTotal' : 'bankerTotal';
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = total;
+  if (total >= 8) el.classList.add('high');
+}
+
+// ================================================================
+//  메인 딜링 함수 (API 호출 + 에볼루션 딜 시퀀스)
+// ================================================================
+async function runBaccaratDeal() {
+  if (bacState.dealingInProgress) return;
+  bacState.dealingInProgress = true;
+
+  setBacPhase(BAC_PHASES.DEALING, '딜링중');
+  lockBetPanel('🃏 딜링중...');
+  resetBacCards();
+  hideBacResult();
+
+  // 총 배팅 계산
+  const b = bacState.bets;
+  const totalBet = Object.values(b).reduce((s,v)=>s+v,0);
+
+  let res = null;
+  try {
+    if (totalBet > 0 && token) {
+      // 배팅 타입 결정 (가장 큰 배팅 기준으로 주 배팅)
+      const mainType = Object.keys(b).reduce((a,k) => b[k]>b[a]?k:a, 'player');
+      const mainAmt = b[mainType];
+      res = await api('POST', '/api/casino/baccarat', {
+        bet_type: mainType, amount: mainAmt,
+        extra_bets: b // 전체 배팅 정보
+      });
+    } else {
+      // 배팅 없이도 게임은 계속 (데모 모드)
+      res = await api('POST', '/api/casino/baccarat', { bet_type: 'player', amount: 0, demo: true });
+    }
+  } catch(e) {
+    // 오류 시 랜덤 결과로 시각화만
+    showToast(e.message || '오류 발생', 'error');
+    bacState.dealingInProgress = false;
+    return;
+  }
+
+  const pCards = res.player.cards;
+  const bCards = res.banker.cards;
+  const playerEl = document.getElementById('playerCards');
+  const bankerEl = document.getElementById('bankerCards');
+
+  // ── STEP 1: 뒷면 4장 배치 P1→B1→P2→B2 ─────────────────
+  const slots = { player:[], banker:[] };
+  await sleep(400);
+  const ps0 = createCardSlot('ps-0'); playerEl.appendChild(ps0); slots.player.push(ps0);
+  await sleep(280);
+  const bs0 = createCardSlot('bs-0'); bankerEl.appendChild(bs0); slots.banker.push(bs0);
+  await sleep(280);
+  const ps1 = createCardSlot('ps-1'); playerEl.appendChild(ps1); slots.player.push(ps1);
+  await sleep(280);
+  const bs1 = createCardSlot('bs-1'); bankerEl.appendChild(bs1); slots.banker.push(bs1);
+  await sleep(500);
+
+  // ── STEP 2: 플립 P1→B1→P2→B2 ───────────────────────────
+  await flipCard(ps0, pCards[0]); updateBacScore('player', pCards.slice(0,1)); await sleep(180);
+  await flipCard(bs0, bCards[0]); updateBacScore('banker', bCards.slice(0,1)); await sleep(180);
+  await flipCard(ps1, pCards[1]); updateBacScore('player', pCards.slice(0,2)); await sleep(180);
+  await flipCard(bs1, bCards[1]); updateBacScore('banker', bCards.slice(0,2)); await sleep(400);
+
+  // 내추럴 체크
+  const pNow = pCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
+  const bNow = bCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
+  if (pNow >= 8 || bNow >= 8) {
+    const nb = document.getElementById('naturalBadge');
+    if (nb) nb.style.display = 'block';
+    const ra = document.getElementById('bacResultAnnounce');
+    if (ra) ra.textContent = 'NATURAL';
+    await sleep(1000);
+  }
+
+  // ── STEP 3: 3번째 카드 ──────────────────────────────────
+  if (pCards[2]) {
+    await sleep(350);
+    const ps2 = createCardSlot('ps-2'); playerEl.appendChild(ps2); slots.player.push(ps2);
+    await sleep(350);
+    await flipCard(ps2, pCards[2]); updateBacScore('player', pCards); await sleep(250);
+  }
+  if (bCards[2]) {
+    await sleep(350);
+    const bs2 = createCardSlot('bs-2'); bankerEl.appendChild(bs2); slots.banker.push(bs2);
+    await sleep(350);
+    await flipCard(bs2, bCards[2]); updateBacScore('banker', bCards); await sleep(250);
+  }
+
+  // ── STEP 4: 최종 점수 확정 ──────────────────────────────
+  await sleep(400);
+  const ptEl = document.getElementById('playerTotal');
+  const btEl = document.getElementById('bankerTotal');
+  if (ptEl) { ptEl.textContent = res.player.total; ptEl.classList.add('flash'); }
+  if (btEl) { btEl.textContent = res.banker.total; btEl.classList.add('flash'); }
+
+  // 승자 존 하이라이트
+  if (res.winner === 'player') document.getElementById('bac-player-zone')?.classList.add('winner-zone');
+  else if (res.winner === 'banker') document.getElementById('bac-banker-zone')?.classList.add('winner-zone');
+  else { document.getElementById('bac-player-zone')?.classList.add('winner-zone'); document.getElementById('bac-tie-zone')?.classList.add('winner-zone'); document.getElementById('bac-banker-zone')?.classList.add('winner-zone'); }
+
+  // 이긴 카드 글로우
+  const winSlots = res.winner === 'tie' ? [...slots.player,...slots.banker] : slots[res.winner] || [];
+  winSlots.forEach(s => s.classList.add('win-glow'));
+
+  // 비드로드 업데이트
+  bacState.history.push(res.winner);
+  updateBeadRoad();
+
+  // 포인트 업데이트 & 결과 계산
+  await refreshPoints();
+  let earned = 0;
+  if (totalBet > 0 && res.won) earned = res.win_amount;
+  else if (totalBet > 0 && !res.won) earned = -totalBet;
+  if (earned > 0) showWinEffect(earned);
+
+  // 결과 오버레이 표시
+  showBacResult(res, earned);
+  setBacPhase(BAC_PHASES.RESULT, '결과');
+  const ra = document.getElementById('bacResultAnnounce');
+  const wname = res.winner === 'player' ? 'PLAYER' : res.winner === 'banker' ? 'BANKER' : 'TIE';
+  if (ra) ra.textContent = wname;
+
+  bacState.dealingInProgress = false;
+}
+
+// ================================================================
+//  자동 라운드 루프
+//  배팅(20초) → 딜링 → 결과(5초) → 반복
+// ================================================================
+const BAC_BET_TIME    = 20; // 배팅 시간 (초)
+const BAC_RESULT_TIME = 5;  // 결과 표시 시간 (초)
+
+async function baccaratLoop() {
+  if (bacState.running) return;
+  bacState.running = true;
+
+  while (bacState.running) {
+    bacState.round++;
+    const roundEl = document.getElementById('bacRound');
+    if (roundEl) roundEl.textContent = bacState.round;
+
+    // ── 배팅 페이즈 ────────────────────────────────────────
+    bacState.bets = { player:0, banker:0, tie:0, playerPair:0, bankerPair:0 };
+    updateBetDisplay();
+    hideBacResult();
+    setBacPhase(BAC_PHASES.BETTING, '배팅중');
+    unlockBetPanel();
+    startBacTimer(BAC_BET_TIME, '#22c55e');
+
+    // BAC_BET_TIME초 대기
+    await sleep(BAC_BET_TIME * 1000);
+
+    // ── 배팅 마감 ───────────────────────────────────────────
+    lockBetPanel('⏳ 배팅 마감!');
+    stopBacTimer();
+    await sleep(800);
+
+    // ── 딜링 페이즈 ─────────────────────────────────────────
+    await runBaccaratDeal();
+
+    // ── 결과 페이즈 ─────────────────────────────────────────
+    setBacPhase(BAC_PHASES.RESULT, '결과');
+    startBacTimer(BAC_RESULT_TIME, '#f59e0b');
+    await sleep(BAC_RESULT_TIME * 1000);
+    stopBacTimer();
+
+    // 다음 라운드로
+    await sleep(500);
+  }
+}
+
+// 바카라 페이지 진입 시 자동 시작
+function initBaccaratLive() {
+  if (bacState.running) return;
+  resetBacCards();
+  updateBetDisplay();
+  baccaratLoop();
+}
+
+// 레거시 호환 (기존 코드 참조 방지)
+function playBaccarat() { /* 라이브 테이블 방식으로 대체됨 */ }
+function selectBetType() {}
 function makeCardHTML(c) { return ''; }
 function renderBaccaratCards(elId, cards) {}
+function toggleBacRule() {}
 
 // ---- SLOTS ----
 const SLOT_SYMBOLS = ['🍒', '🍊', '🍋', '🍇', '⭐', '🔔', '🃏', '7️⃣', '💎'];

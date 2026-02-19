@@ -215,98 +215,132 @@
         <button class="ctab" onclick="showCasino('roulette')">🎡 룰렛</button>
       </div>
 
-      <!-- 바카라 -->
-      <div id="casino-baccarat" class="casino-game-area">
-        <h2 class="game-title">🃏 바카라</h2>
+      <!-- 바카라 LIVE TABLE -->
+      <div id="casino-baccarat" class="casino-game-area bac-live-wrap">
 
-        <!-- 바카라 룰 안내 -->
-        <div class="baccarat-rule-bar">
-          <span>🂠 A=1점 &nbsp;|&nbsp; 2~9=액면가 &nbsp;|&nbsp; 10·J·Q·K=0점 &nbsp;|&nbsp; 합산 1의 자리 &nbsp;|&nbsp; <b>내추럴 8·9 즉시 결과</b></span>
-          <span class="rule-detail-btn" onclick="toggleBacRule()">상세규칙 ▼</span>
-        </div>
-        <div id="baccaratRuleDetail" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;font-size:12px;color:var(--text-muted);line-height:1.8">
-          <b style="color:var(--gold)">3번째 카드 규칙 (정통 바카라)</b><br>
-          ✦ 플레이어 합 0~5 → 3번째 카드 뽑기 / 6~7 → 스탠드<br>
-          ✦ 뱅커 0~2 → 무조건 드로우<br>
-          ✦ 뱅커 3 → 플레이어 3번째 카드가 8이 아닐 때 드로우<br>
-          ✦ 뱅커 4 → 플레이어 3번째 2~7일 때 드로우<br>
-          ✦ 뱅커 5 → 플레이어 3번째 4~7일 때 드로우<br>
-          ✦ 뱅커 6 → 플레이어 3번째 6~7일 때 드로우<br>
-          ✦ 뱅커 7 → 항상 스탠드<br>
-          ✦ 내추럴(8·9) → 즉시 종료, 추가 카드 없음
-        </div>
-
-        <!-- 점수 히스토리 (비드로드) -->
-        <div class="bead-road-wrap">
-          <div class="bead-road-title">최근 결과</div>
-          <div class="bead-road" id="beadRoad"></div>
-        </div>
-
-        <!-- 바카라 테이블 -->
-        <div class="baccarat-table-wrap">
-          <div class="baccarat-felt">
-            <div class="baccarat-side" id="baccarat-player-side">
-              <div class="side-label player-label">👤 PLAYER</div>
-              <div class="cards-area" id="playerCards">
-                <div class="card-placeholder">?</div>
-                <div class="card-placeholder">?</div>
-              </div>
-              <div class="bac-score-wrap">
-                <div class="bac-score-label">점수</div>
-                <div class="total-box" id="playerTotal">-</div>
-              </div>
-            </div>
-            <div class="baccarat-center-col">
-              <div class="baccarat-vs">VS</div>
-              <div class="natural-badge" id="naturalBadge" style="display:none">🌟 NATURAL!</div>
-            </div>
-            <div class="baccarat-side" id="baccarat-banker-side">
-              <div class="side-label banker-label">🏦 BANKER</div>
-              <div class="cards-area" id="bankerCards">
-                <div class="card-placeholder">?</div>
-                <div class="card-placeholder">?</div>
-              </div>
-              <div class="bac-score-wrap">
-                <div class="bac-score-label">점수</div>
-                <div class="total-box" id="bankerTotal">-</div>
-              </div>
+        <!-- 상단 HUD: 비드로드 + 라운드 정보 -->
+        <div class="bac-hud">
+          <div class="bac-hud-left">
+            <span class="bac-round-label">ROUND <span id="bacRound">–</span></span>
+            <div class="bead-road" id="beadRoad"></div>
+          </div>
+          <div class="bac-hud-right">
+            <div class="bac-phase-badge" id="bacPhaseBadge">대기중</div>
+            <div class="bac-countdown-wrap">
+              <svg class="bac-timer-svg" viewBox="0 0 44 44">
+                <circle class="bac-timer-bg" cx="22" cy="22" r="18"/>
+                <circle class="bac-timer-arc" id="bacTimerArc" cx="22" cy="22" r="18"
+                  stroke-dasharray="113" stroke-dashoffset="0"/>
+              </svg>
+              <span class="bac-timer-num" id="bacTimerNum">–</span>
             </div>
           </div>
         </div>
 
-        <div class="result-box" id="baccaratResult"></div>
+        <!-- 메인 테이블 (그린 펠트) -->
+        <div class="bac-table">
 
-        <div class="bet-controls">
-          <div class="bet-type-btns bac-bet-btns">
-            <button class="bet-type bac-player active" data-type="player" onclick="selectBetType(this)">
-              <span class="bac-btn-icon">👤</span>
-              <span class="bac-btn-name">플레이어</span>
-              <span class="bac-btn-odd">×2.00</span>
-            </button>
-            <button class="bet-type bac-tie" data-type="tie" onclick="selectBetType(this)">
-              <span class="bac-btn-icon">🤝</span>
-              <span class="bac-btn-name">타이</span>
-              <span class="bac-btn-odd">×9.00</span>
-            </button>
-            <button class="bet-type bac-banker" data-type="banker" onclick="selectBetType(this)">
-              <span class="bac-btn-icon">🏦</span>
-              <span class="bac-btn-name">뱅커</span>
-              <span class="bac-btn-odd">×1.95</span>
-            </button>
-          </div>
-          <div class="bet-amount-row">
-            <div class="quick-bets">
-              <button onclick="setAmount(1000)">1천</button>
-              <button onclick="setAmount(5000)">5천</button>
-              <button onclick="setAmount(10000)">1만</button>
-              <button onclick="setAmount(50000)">5만</button>
-              <button onclick="setAmount(100000)">10만</button>
+          <!-- 플레이어 존 -->
+          <div class="bac-zone bac-zone-player" id="bac-player-zone">
+            <div class="bac-zone-label">PLAYER <span class="bac-odd-label">1:1</span></div>
+            <div class="bac-cards-row" id="playerCards"></div>
+            <div class="bac-score-circle" id="playerTotal">–</div>
+            <div class="bac-bet-on-zone" id="bacBetPlayer">
+              <div class="bac-chip-stack" id="chipStackPlayer"></div>
             </div>
-            <input type="number" id="baccaratAmount" placeholder="배팅금액 입력" min="1000" step="1000"/>
-            <button class="btn btn-gold" onclick="playBaccarat()" id="baccaratBtn"><i class="fa fa-play"></i> 게임 시작</button>
           </div>
+
+          <!-- 중앙 -->
+          <div class="bac-center-panel">
+            <div class="bac-logo-text">BAC<br>CAR<br>AT</div>
+            <div class="natural-badge" id="naturalBadge" style="display:none">NATURAL!</div>
+            <div class="bac-result-announce" id="bacResultAnnounce"></div>
+          </div>
+
+          <!-- 타이 존 -->
+          <div class="bac-zone bac-zone-tie" id="bac-tie-zone">
+            <div class="bac-zone-label">TIE <span class="bac-odd-label">8:1</span></div>
+            <div class="bac-bet-on-zone" id="bacBetTie">
+              <div class="bac-chip-stack" id="chipStackTie"></div>
+            </div>
+          </div>
+
+          <!-- 뱅커 존 -->
+          <div class="bac-zone bac-zone-banker" id="bac-banker-zone">
+            <div class="bac-zone-label">BANKER <span class="bac-odd-label">0.95:1</span></div>
+            <div class="bac-cards-row" id="bankerCards"></div>
+            <div class="bac-score-circle" id="bankerTotal">–</div>
+            <div class="bac-bet-on-zone" id="bacBetBanker">
+              <div class="bac-chip-stack" id="chipStackBanker"></div>
+            </div>
+          </div>
+
+        </div><!-- end bac-table -->
+
+        <!-- 결과 오버레이 -->
+        <div class="bac-result-overlay hidden" id="bacResultOverlay">
+          <div class="bac-result-box" id="bacResultBox"></div>
         </div>
-      </div>
+
+        <!-- 배팅 패널 -->
+        <div class="bac-bet-panel" id="bacBetPanel">
+
+          <!-- 칩 선택 -->
+          <div class="bac-chip-selector">
+            <div class="bac-chip-label">칩 선택</div>
+            <div class="bac-chips-row">
+              <div class="bac-chip chip-1k   active" onclick="selectChip(1000)"   data-val="1000">1K</div>
+              <div class="bac-chip chip-5k"        onclick="selectChip(5000)"   data-val="5000">5K</div>
+              <div class="bac-chip chip-10k"       onclick="selectChip(10000)"  data-val="10000">1만</div>
+              <div class="bac-chip chip-50k"       onclick="selectChip(50000)"  data-val="50000">5만</div>
+              <div class="bac-chip chip-100k"      onclick="selectChip(100000)" data-val="100000">10만</div>
+            </div>
+          </div>
+
+          <!-- 배팅존 버튼 -->
+          <div class="bac-bet-zones-btns">
+            <button class="bac-zone-btn player-btn" onclick="placeBet('player')" id="btnBetPlayer">
+              <span class="bzb-name">PLAYER</span>
+              <span class="bzb-amt" id="dispPlayer">0</span>
+            </button>
+            <button class="bac-zone-btn pair-btn" onclick="placeBet('playerPair')" id="btnBetPP">
+              <span class="bzb-name">P PAIR</span>
+              <span class="bzb-amt" id="dispPlayerPair">0</span>
+              <span class="bzb-odd">11:1</span>
+            </button>
+            <button class="bac-zone-btn tie-btn" onclick="placeBet('tie')" id="btnBetTie">
+              <span class="bzb-name">TIE</span>
+              <span class="bzb-amt" id="dispTie">0</span>
+              <span class="bzb-odd">8:1</span>
+            </button>
+            <button class="bac-zone-btn pair-btn" onclick="placeBet('bankerPair')" id="btnBetBP">
+              <span class="bzb-name">B PAIR</span>
+              <span class="bzb-amt" id="dispBankerPair">0</span>
+              <span class="bzb-odd">11:1</span>
+            </button>
+            <button class="bac-zone-btn banker-btn" onclick="placeBet('banker')" id="btnBetBanker">
+              <span class="bzb-name">BANKER</span>
+              <span class="bzb-amt" id="dispBanker">0</span>
+            </button>
+          </div>
+
+          <!-- 액션 버튼 -->
+          <div class="bac-action-row">
+            <button class="bac-action-btn clear-btn" onclick="clearBets()">↩ 취소</button>
+            <div class="bac-total-bet">
+              총 배팅: <span id="bacTotalBetDisp">0</span>P
+            </div>
+            <button class="bac-action-btn double-btn" onclick="doubleBets()">×2 더블</button>
+          </div>
+
+        </div><!-- end bac-bet-panel -->
+
+        <!-- 배팅 잠금 오버레이 -->
+        <div class="bac-locked-overlay hidden" id="bacLockedOverlay">
+          <div class="bac-locked-msg" id="bacLockedMsg">🃏 딜링중...</div>
+        </div>
+
+      </div><!-- end casino-baccarat -->
 
       <!-- 슬롯 -->
       <div id="casino-slots" class="casino-game-area hidden">

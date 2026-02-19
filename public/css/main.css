@@ -421,19 +421,347 @@ input{font-family:inherit}
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
 
-/* ===== BACCARAT ===== */
-.baccarat-rule-bar{
-  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
-  padding:10px 16px;margin-bottom:12px;font-size:12px;color:var(--text-muted);
-  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+/* =====================================================
+   BACCARAT LIVE TABLE – Evolution Style
+   ===================================================== */
+
+/* 전체 래퍼 */
+.bac-live-wrap{
+  padding:0!important;
+  background:linear-gradient(170deg,#050e1a 0%,#071a10 50%,#050e1a 100%);
+  border-radius:16px;overflow:hidden;position:relative;
 }
-.rule-detail-btn{cursor:pointer;color:var(--gold);font-weight:700;white-space:nowrap}
-.rule-detail-btn:hover{text-decoration:underline}
+
+/* ── HUD 상단바 ── */
+.bac-hud{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 18px;
+  background:rgba(0,0,0,.5);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.bac-hud-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bac-round-label{font-size:11px;font-weight:900;color:rgba(255,255,255,.4);letter-spacing:2px;white-space:nowrap}
 
 /* 비드로드 */
-.bead-road-wrap{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.bead-road-title{font-size:12px;color:var(--text-muted);white-space:nowrap}
-.bead-road{display:flex;gap:5px;flex-wrap:wrap}
+.bead-road{display:flex;gap:4px;flex-wrap:wrap;max-width:260px}
+.bead{
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:900;color:#fff;
+  animation:beadIn .25s ease;flex-shrink:0;
+}
+@keyframes beadIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.bead-p{background:#2563eb}
+.bead-b{background:#dc2626}
+.bead-t{background:#16a34a}
+
+/* HUD 우측: 페이즈 배지 + 타이머 */
+.bac-hud-right{display:flex;align-items:center;gap:14px}
+.bac-phase-badge{
+  padding:5px 14px;border-radius:20px;font-size:11px;font-weight:900;
+  letter-spacing:1px;text-transform:uppercase;
+  background:rgba(240,192,64,.15);color:var(--gold);
+  border:1px solid rgba(240,192,64,.3);
+  white-space:nowrap;transition:all .3s;
+}
+.bac-phase-badge.betting{background:rgba(34,197,94,.15);color:#22c55e;border-color:rgba(34,197,94,.4)}
+.bac-phase-badge.dealing{background:rgba(59,130,246,.15);color:#60a5fa;border-color:rgba(59,130,246,.4)}
+.bac-phase-badge.result{background:rgba(240,192,64,.2);color:var(--gold);border-color:rgba(240,192,64,.5)}
+
+/* 원형 타이머 */
+.bac-countdown-wrap{position:relative;width:44px;height:44px}
+.bac-timer-svg{width:44px;height:44px;transform:rotate(-90deg)}
+.bac-timer-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:3}
+.bac-timer-arc{fill:none;stroke:#22c55e;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .3s}
+.bac-timer-num{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:14px;font-weight:900;color:#fff;
+}
+
+/* ── 메인 테이블 (그린 펠트) ── */
+.bac-table{
+  display:grid;
+  grid-template-columns:1fr 80px 1fr;
+  gap:0;
+  padding:20px 16px;
+  min-height:280px;
+  position:relative;
+}
+
+/* 테이블 중앙 BACCARAT 텍스트 */
+.bac-center-panel{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:10px 0;
+}
+.bac-logo-text{
+  font-size:10px;font-weight:900;color:rgba(255,255,255,.12);
+  letter-spacing:3px;text-align:center;line-height:1.6;
+}
+.natural-badge{
+  font-size:11px;font-weight:900;color:#fff;
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+  border-radius:6px;padding:5px 10px;
+  animation:naturalPop .4s cubic-bezier(.34,1.56,.64,1);
+  text-align:center;white-space:nowrap;
+}
+@keyframes naturalPop{from{transform:scale(0) rotate(-10deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.bac-result-announce{
+  font-size:13px;font-weight:900;color:var(--gold);text-align:center;
+  min-height:20px;transition:all .3s;
+}
+
+/* ── 존 (플레이어/타이/뱅커) ── */
+.bac-zone{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:12px 8px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(0,0,0,.2);
+  position:relative;transition:all .4s;
+}
+.bac-zone.winner-zone{
+  border-color:var(--gold);
+  background:rgba(240,192,64,.06);
+  box-shadow:0 0 30px rgba(240,192,64,.2);
+}
+.bac-zone-player{border-left:2px solid rgba(37,99,235,.4)}
+.bac-zone-banker{border-right:2px solid rgba(220,38,38,.4)}
+.bac-zone-tie{
+  grid-column:1/-1;
+  flex-direction:row;justify-content:center;
+  max-height:70px;min-height:60px;
+  border:1px solid rgba(22,163,74,.2);
+  background:rgba(22,163,74,.05);
+  margin:0 40px;
+  border-radius:40px;
+  padding:8px 20px;
+}
+
+.bac-zone-label{
+  font-size:11px;font-weight:900;letter-spacing:2px;color:rgba(255,255,255,.5);
+  text-align:center;
+}
+.bac-zone-player .bac-zone-label{color:#60a5fa}
+.bac-zone-banker .bac-zone-label{color:#f87171}
+.bac-zone-tie .bac-zone-label{color:#4ade80}
+.bac-odd-label{font-size:10px;opacity:.7;margin-left:4px}
+
+/* 카드 행 */
+.bac-cards-row{
+  display:flex;gap:6px;justify-content:center;align-items:flex-end;
+  min-height:108px;flex-wrap:wrap;perspective:800px;
+}
+
+/* 점수 원 */
+.bac-score-circle{
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;color:#fff;
+  transition:all .4s;
+}
+.bac-zone-player .bac-score-circle{border-color:#2563eb}
+.bac-zone-banker .bac-score-circle{border-color:#dc2626}
+.bac-score-circle.high{background:#15803d;border-color:#22c55e}
+
+/* 배팅된 칩 표시 (존 위) */
+.bac-bet-on-zone{
+  min-height:36px;display:flex;align-items:center;justify-content:center;
+}
+.bac-chip-stack{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+.stacked-chip{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:900;color:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.6);
+  animation:chipPlace .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes chipPlace{from{transform:translateY(-20px) scale(.5);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+.stacked-chip.c1k  {background:linear-gradient(135deg,#6b7280,#4b5563)}
+.stacked-chip.c5k  {background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+.stacked-chip.c10k {background:linear-gradient(135deg,#16a34a,#15803d)}
+.stacked-chip.c50k {background:linear-gradient(135deg,#9333ea,#7e22ce)}
+.stacked-chip.c100k{background:linear-gradient(135deg,#dc2626,#b91c1c)}
+
+/* 결과 오버레이 */
+.bac-result-overlay{
+  position:absolute;inset:0;z-index:20;
+  background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);border-radius:16px;
+}
+.bac-result-overlay.hidden{display:none}
+.bac-result-box{
+  background:linear-gradient(135deg,rgba(20,20,40,.95),rgba(10,10,20,.95));
+  border:2px solid var(--gold);border-radius:20px;
+  padding:30px 50px;text-align:center;
+  animation:resultPop .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes resultPop{from{transform:scale(.5) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.bac-result-winner{font-size:32px;font-weight:900;color:var(--gold);margin-bottom:8px}
+.bac-result-detail{font-size:14px;color:rgba(255,255,255,.7)}
+.bac-result-earn{font-size:20px;font-weight:900;color:#22c55e;margin-top:10px}
+
+/* ── 배팅 패널 ── */
+.bac-bet-panel{
+  background:rgba(0,0,0,.5);
+  border-top:1px solid rgba(255,255,255,.07);
+  padding:16px;
+  position:relative;
+}
+
+/* 칩 선택 */
+.bac-chip-selector{margin-bottom:14px}
+.bac-chip-label{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
+.bac-chips-row{display:flex;gap:10px;flex-wrap:wrap}
+.bac-chip{
+  width:52px;height:52px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:900;color:#fff;
+  cursor:pointer;
+  border:3px solid transparent;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+  transition:all .2s;user-select:none;
+}
+.bac-chip:hover{transform:translateY(-4px) scale(1.08)}
+.bac-chip.active{transform:translateY(-6px) scale(1.15);border-color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.6)}
+.chip-1k  {background:radial-gradient(circle at 35% 35%,#9ca3af,#4b5563);border-color:#6b7280}
+.chip-5k  {background:radial-gradient(circle at 35% 35%,#3b82f6,#1d4ed8);border-color:#2563eb}
+.chip-10k {background:radial-gradient(circle at 35% 35%,#22c55e,#15803d);border-color:#16a34a}
+.chip-50k {background:radial-gradient(circle at 35% 35%,#a855f7,#7e22ce);border-color:#9333ea}
+.chip-100k{background:radial-gradient(circle at 35% 35%,#ef4444,#b91c1c);border-color:#dc2626}
+
+/* 배팅존 버튼들 */
+.bac-bet-zones-btns{
+  display:grid;
+  grid-template-columns:1fr auto 1fr auto 1fr;
+  gap:8px;margin-bottom:12px;
+}
+.bac-zone-btn{
+  display:flex;flex-direction:column;align-items:center;
+  padding:10px 6px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  cursor:pointer;transition:all .2s;
+  min-height:64px;justify-content:center;
+}
+.bac-zone-btn:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.bac-zone-btn:active{transform:scale(.97)}
+.bac-zone-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.bzb-name{font-size:11px;font-weight:900;letter-spacing:1px;color:rgba(255,255,255,.6)}
+.bzb-amt{font-size:15px;font-weight:900;color:#fff;min-height:20px}
+.bzb-odd{font-size:9px;color:rgba(255,255,255,.4)}
+.player-btn{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.08)}
+.player-btn:hover{border-color:#2563eb;background:rgba(37,99,235,.18)}
+.player-btn.has-bet{border-color:#2563eb;background:rgba(37,99,235,.2)}
+.banker-btn{border-color:rgba(220,38,38,.4);background:rgba(220,38,38,.08)}
+.banker-btn:hover{border-color:#dc2626;background:rgba(220,38,38,.18)}
+.banker-btn.has-bet{border-color:#dc2626;background:rgba(220,38,38,.2)}
+.tie-btn{border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.08)}
+.tie-btn:hover{border-color:#16a34a;background:rgba(22,163,74,.18)}
+.tie-btn.has-bet{border-color:#16a34a;background:rgba(22,163,74,.2)}
+.pair-btn{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
+.pair-btn:hover{border-color:#a855f7}
+.pair-btn.has-bet{border-color:#a855f7;background:rgba(168,85,247,.15)}
+
+/* 액션 행 */
+.bac-action-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bac-action-btn{
+  padding:10px 20px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.bac-action-btn:hover{background:rgba(255,255,255,.12)}
+.bac-action-btn:disabled{opacity:.35;cursor:not-allowed}
+.clear-btn:hover{border-color:#ef4444;color:#f87171}
+.double-btn:hover{border-color:var(--gold);color:var(--gold)}
+.bac-total-bet{font-size:13px;color:rgba(255,255,255,.6);font-weight:700}
+.bac-total-bet span{color:var(--gold);font-size:15px}
+
+/* 배팅 잠금 오버레이 */
+.bac-locked-overlay{
+  position:absolute;inset:0;z-index:10;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:0 0 16px 16px;
+  backdrop-filter:blur(2px);
+}
+.bac-locked-overlay.hidden{display:none}
+.bac-locked-msg{
+  font-size:16px;font-weight:900;color:rgba(255,255,255,.7);
+  letter-spacing:2px;text-align:center;
+}
+
+/* 레거시 삭제 */
+.baccarat-rule-bar,.rule-detail-btn,.bead-road-wrap,.bead-road-title,
+.baccarat-table-wrap,.baccarat-felt,.baccarat-side,.baccarat-vs,
+.baccarat-center-col,.bac-score-wrap,.bac-score-label,
+.bac-bet-btns,.bac-btn-icon,.bac-btn-name,.bac-btn-odd{display:none}
+
+/* ── 카드 슬롯 + 3D 플립 ── */
+.card-slot{
+  width:68px;height:100px;
+  perspective:800px;
+  flex-shrink:0;
+  position:relative;
+}
+.card-inner{
+  width:100%;height:100%;
+  transform-style:preserve-3d;
+  transition:transform 0.85s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.card-slot.flipped .card-inner{
+  transform:rotateY(180deg);
+}
+.card-face{
+  position:absolute;inset:0;
+  backface-visibility:hidden;
+  border-radius:10px;
+  overflow:hidden;
+}
+/* 뒷면 */
+.card-back{
+  background:linear-gradient(135deg,#1e3a5f,#0f2440);
+  border:2px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+  box-shadow:0 4px 14px rgba(0,0,0,.5);
+}
+/* 앞면 (뒤집혀 있다가 클래스로 표시) */
+.card-front{
+  background:#fff;color:#111;
+  transform:rotateY(180deg);
+  display:flex;flex-direction:column;
+  justify-content:space-between;padding:4px;
+  box-shadow:0 4px 14px rgba(0,0,0,.5);
+  border:1px solid rgba(0,0,0,.08);
+}
+.card-front.red{color:#dc2626}
+.cf-corner-tl,.cf-corner-br{
+  display:flex;flex-direction:column;
+  align-items:center;line-height:1;
+}
+.cf-corner-br{transform:rotate(180deg)}
+.cf-val{font-size:15px;font-weight:900;line-height:1}
+.cf-suit-sm{font-size:12px;line-height:1}
+.cf-center-suit{text-align:center;flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;padding:2px}
+
+/* 카드 입장 애니메이션 */
+.card-slot{
+  animation:cardSlide .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cardSlide{from{transform:translateY(-30px) scale(.7);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+
+/* 승리 글로우 */
+.card-slot.win-glow .card-inner{
+  filter:drop-shadow(0 0 10px #f0c040) drop-shadow(0 0 20px #f0c040);
+}
+
+/* 점수 플래시 */
+@keyframes scoreFlash{0%{transform:scale(1)}50%{transform:scale(1.3);background:#f0c040;color:#000}100%{transform:scale(1)}}
+.bac-score-circle.flash{animation:scoreFlash .5s ease}
+
+/* 비드로드 */
+.bead-road{display:flex;gap:4px;flex-wrap:wrap;max-width:260px}
 .bead{
   width:24px;height:24px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
