@@ -333,7 +333,7 @@
         "draw_odds": null,
         "away_odds": 1.95,
         "status": "live",
-        "home_score": 74,
+        "home_score": 75,
         "away_score": 77,
         "minute": "Q2",
         "start_time": "2026-02-19T01:40:09.675Z"
@@ -362,8 +362,8 @@
         "draw_odds": null,
         "away_odds": 2.45,
         "status": "live",
-        "home_score": 37,
-        "away_score": 31,
+        "home_score": 39,
+        "away_score": 33,
         "minute": "7회",
         "start_time": "2026-02-19T01:40:09.675Z"
       },

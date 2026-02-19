@@ -447,188 +447,265 @@ function updateBeadRoad() {
   }).join('');
 }
 
-// ── 카드 데이터 파싱 ──────────────────────────
+// ================================================================
+//  BACCARAT – Evolution Style Dealing System
+// ================================================================
+
+// ── 유틸 ──────────────────────────────────────────────────────
+const BAC_RED = ['♥','♦'];
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
 function parseCard(c) {
-  const RED_SUITS = ['♥', '♦'];
   let suit = '', val = '';
   if (c && c.card) { suit = c.card[0]; val = c.card.slice(1); }
-  return { suit, val, isRed: RED_SUITS.includes(suit) };
+  const isRed = BAC_RED.includes(suit);
+  return { suit, val, isRed };
 }
 
-// ── 뒷면 카드 슬롯 DOM 생성 ──────────────────
+function cardPoint(c) {
+  const { val } = parseCard(c);
+  if (['J','Q','K','10'].includes(val)) return 0;
+  if (val === 'A') return 1;
+  const n = parseInt(val);
+  return isNaN(n) ? 0 : n;
+}
+
+// ── 앞면 HTML (실제 카드 모양) ────────────────────────────────
+function buildCardFrontHTML(c) {
+  const { suit, val, isRed } = parseCard(c);
+  const colorClass = isRed ? 'red' : 'black';
+
+  // 특수 카드 중앙 처리 (10,J,Q,K → 특수 표시)
+  let centerHTML = '';
+  if (['J','Q','K'].includes(val)) {
+    // 인물 카드: 이니셜
+    const faceMap = { J:'J', Q:'Q', K:'K' };
+    centerHTML = `<div class="cf-face-big">${suit}<br>${faceMap[val]}</div>`;
+  } else if (val === '10') {
+    centerHTML = `<div class="cf-face-big">10<br>${suit}</div>`;
+  } else if (val === 'A') {
+    // 에이스: 큰 문양 하나
+    centerHTML = `<div class="cf-center-suit">${suit}</div>`;
+  } else {
+    // 숫자 카드: 숫자에 따라 문양 배치
+    const n = parseInt(val);
+    const pips = Array(n).fill(suit).join(' ');
+    centerHTML = `<div class="cf-center-suit" style="font-size:${n>=7?22:30}px;line-height:1.35">${pips}</div>`;
+  }
+
+  return `
+    <div class="card-face card-front ${colorClass}">
+      <div class="cf-corner-tl">
+        <div class="cf-val">${val}</div>
+        <div class="cf-suit-sm">${suit}</div>
+      </div>
+      ${centerHTML}
+      <div class="cf-corner-br">
+        <div class="cf-val">${val}</div>
+        <div class="cf-suit-sm">${suit}</div>
+      </div>
+    </div>`;
+}
+
+// ── 뒷면 슬롯 생성 ────────────────────────────────────────────
 function createCardSlot(id) {
   const slot = document.createElement('div');
   slot.className = 'card-slot';
-  slot.id = id;
+  if (id) slot.id = id;
   slot.innerHTML = `
     <div class="card-inner">
-      <div class="card-face card-back"></div>
-      <div class="card-face card-front" style="display:none"></div>
+      <div class="card-face card-back">
+        <div class="card-back-logo">🃏</div>
+      </div>
     </div>`;
   return slot;
 }
 
-// ── 앞면으로 플립 ─────────────────────────────
+// ── 카드 슬롯에 앞면 삽입 후 플립 ────────────────────────────
+// Evolution 타이밍: 카드 등장 0.3초 후 천천히 뒤집힘 (0.9초)
 function flipCard(slot, cardData) {
   return new Promise(resolve => {
-    const { suit, val, isRed } = parseCard(cardData);
-    const front = slot.querySelector('.card-front');
-    front.className = `card-face card-front${isRed ? ' red' : ''}`;
-    front.style.display = '';
-    front.innerHTML = `
-      <div class="cf-tl">${val}<br>${suit}</div>
-      <div class="cf-center">${suit}</div>
-      <div class="cf-br">${val}<br>${suit}</div>`;
-    // 살짝 딜레이 후 플립 (CSS transition 트리거)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        slot.classList.add('flipped');
-        setTimeout(resolve, 580); // transition 완료 대기
-      });
-    });
+    const inner = slot.querySelector('.card-inner');
+    // 앞면 HTML을 뒤집힌 상태로 삽입 (transform:rotateY(180deg) in CSS)
+    inner.insertAdjacentHTML('beforeend', buildCardFrontHTML(cardData));
+
+    // 두 프레임 후 클래스 추가 → CSS transition 발동
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      slot.classList.add('flipped');
+      // 0.9s transition + 0.1s 여유 = 1000ms 후 resolve
+      setTimeout(resolve, 1000);
+    }));
   });
 }
 
-// ── 점수 업데이트 (카드 플립될 때마다) ─────────
-function updateLiveScore(side, cards) {
-  const total = cards.reduce((s, c) => {
-    const { val } = parseCard(c);
-    let p = parseInt(val);
-    if (isNaN(p) || ['J','Q','K'].includes(val)) p = 0;
-    else if (val === 'A') p = 1;
-    return s + p;
-  }, 0) % 10;
-  const el = document.getElementById(side === 'player' ? 'playerTotal' : 'bankerTotal');
-  if (el) el.textContent = total;
+// ── 실시간 점수 업데이트 + 플래시 효과 ──────────────────────
+function updateLiveScore(side, revealedCards) {
+  const total = revealedCards.reduce((s, c) => s + cardPoint(c), 0) % 10;
+  const elId = side === 'player' ? 'playerTotal' : 'bankerTotal';
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = total;
+  el.classList.remove('flash');
+  void el.offsetWidth; // reflow
+  el.classList.add('flash');
 }
 
-// ── 메인 딜링 함수 ─────────────────────────────
+// ── 딜링 상태 텍스트 ─────────────────────────────────────────
+function setBacStatus(msg) {
+  const rb = document.getElementById('baccaratResult');
+  if (rb) { rb.className = 'result-box'; rb.innerHTML = `<span style="color:var(--text-muted)">${msg}</span>`; }
+}
+
+// ================================================================
+//  메인 playBaccarat – 에볼루션 타이밍 완전 재현
+//  타임라인 (에볼루션 실제 기준):
+//   0.0s  배팅 마감 / API 호출
+//   0.5s  P1 뒷면 등장
+//   0.8s  B1 뒷면 등장
+//   1.1s  P2 뒷면 등장
+//   1.4s  B2 뒷면 등장
+//   1.9s  P1 플립 시작 (0.9s)
+//   3.0s  B1 플립 시작
+//   4.1s  P2 플립 시작
+//   5.2s  B2 플립 시작
+//   6.5s  (내추럴 → 바로 결과) or 3번째 카드
+//   7.5s  결과 표시
+// ================================================================
 async function playBaccarat() {
   if (!token) { openModal('loginModal'); return; }
   const amt = document.getElementById('baccaratAmount').value;
   if (!amt || amt < 1000) { showToast('배팅금액을 입력하세요.', 'error'); return; }
 
   const btn = document.getElementById('baccaratBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 딜링중...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-hourglass-half fa-spin"></i> 배팅마감'; }
 
-  // ── 초기화 ─────────────────────────────────
+  // ── 초기화 ────────────────────────────────────────────────
   const playerEl = document.getElementById('playerCards');
   const bankerEl = document.getElementById('bankerCards');
   playerEl.innerHTML = '';
   bankerEl.innerHTML = '';
   document.getElementById('playerTotal').textContent = '-';
   document.getElementById('bankerTotal').textContent = '-';
-  document.getElementById('baccaratResult').className = 'result-box';
-  document.getElementById('baccaratResult').innerHTML = '';
   document.getElementById('baccarat-player-side').classList.remove('winner');
   document.getElementById('baccarat-banker-side').classList.remove('winner');
   const naturalBadge = document.getElementById('naturalBadge');
   if (naturalBadge) naturalBadge.style.display = 'none';
+  setBacStatus('🃏 배팅 마감 중...');
 
   try {
-    // ── API 호출 ──────────────────────────────
+    await sleep(600);
+    // ── API 호출 ──────────────────────────────────────────
     const res = await api('POST', '/api/casino/baccarat', { bet_type: selectedBetType, amount: amt });
-
-    const pCards = res.player.cards;   // 2~3장
-    const bCards = res.banker.cards;   // 2~3장
-    const maxRound = Math.max(pCards.length, bCards.length);
-
-    // ── 에볼루션 딜 순서: P1→B1→P2→B2 뒷면으로 먼저 배치 ──
+    const pCards = res.player.cards;
+    const bCards = res.banker.cards;
     const slots = { player: [], banker: [] };
 
-    // 2장씩 뒷면 슬롯 배치 (슬라이드인)
-    for (let i = 0; i < 2; i++) {
-      await new Promise(r => setTimeout(r, 120));
-      const ps = createCardSlot(`ps-${i}`);
-      playerEl.appendChild(ps);
-      slots.player.push(ps);
+    setBacStatus('🃏 딜링 중...');
+    if (btn) btn.innerHTML = '<i class="fa fa-cards fa-spin"></i> 딜링중...';
 
-      await new Promise(r => setTimeout(r, 120));
-      const bs = createCardSlot(`bs-${i}`);
-      bankerEl.appendChild(bs);
-      slots.banker.push(bs);
-    }
+    // ── STEP 1: 뒷면 4장 순서대로 배치 (P1→B1→P2→B2) ────
+    // P1 등장
+    await sleep(500);
+    const ps0 = createCardSlot('ps-0'); playerEl.appendChild(ps0); slots.player.push(ps0);
 
-    await new Promise(r => setTimeout(r, 400));
+    // B1 등장
+    await sleep(300);
+    const bs0 = createCardSlot('bs-0'); bankerEl.appendChild(bs0); slots.banker.push(bs0);
 
-    // ── 플레이어 1번 카드 플립 ─────────────────
-    await flipCard(slots.player[0], pCards[0]);
-    updateLiveScore('player', pCards.slice(0, 1));
-    await new Promise(r => setTimeout(r, 160));
+    // P2 등장
+    await sleep(300);
+    const ps1 = createCardSlot('ps-1'); playerEl.appendChild(ps1); slots.player.push(ps1);
 
-    // ── 뱅커 1번 카드 플립 ────────────────────
-    await flipCard(slots.banker[0], bCards[0]);
-    updateLiveScore('banker', bCards.slice(0, 1));
-    await new Promise(r => setTimeout(r, 160));
+    // B2 등장
+    await sleep(300);
+    const bs1 = createCardSlot('bs-1'); bankerEl.appendChild(bs1); slots.banker.push(bs1);
 
-    // ── 플레이어 2번 카드 플립 ─────────────────
-    await flipCard(slots.player[1], pCards[1]);
+    // ── 딜링 완료 후 잠깐 정지 (에볼루션 특유의 긴장감) ──
+    await sleep(600);
+
+    // ── STEP 2: 한 장씩 플립 (P1→B1→P2→B2) ─────────────
+    setBacStatus('');
+
+    // P1 플립
+    await flipCard(ps0, pCards[0]);
+    updateLiveScore('player', [pCards[0]]);
+    await sleep(200);
+
+    // B1 플립
+    await flipCard(bs0, bCards[0]);
+    updateLiveScore('banker', [bCards[0]]);
+    await sleep(200);
+
+    // P2 플립
+    await flipCard(ps1, pCards[1]);
     updateLiveScore('player', pCards.slice(0, 2));
-    await new Promise(r => setTimeout(r, 160));
+    await sleep(200);
 
-    // ── 뱅커 2번 카드 플립 ────────────────────
-    await flipCard(slots.banker[1], bCards[1]);
+    // B2 플립
+    await flipCard(bs1, bCards[1]);
     updateLiveScore('banker', bCards.slice(0, 2));
-    await new Promise(r => setTimeout(r, 300));
+    await sleep(500);
 
-    // ── 내추럴 체크 ──────────────────────────
-    if (res.natural && naturalBadge) {
-      naturalBadge.style.display = 'block';
-      await new Promise(r => setTimeout(r, 500));
+    // ── 내추럴 체크 ───────────────────────────────────────
+    const pNow = pCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
+    const bNow = bCards.slice(0,2).reduce((s,c)=>s+cardPoint(c),0) % 10;
+    if (pNow >= 8 || bNow >= 8) {
+      if (naturalBadge) naturalBadge.style.display = 'block';
+      setBacStatus('✨ NATURAL!');
+      await sleep(1200);
     }
 
-    // ── 3번째 카드 (있을 경우) ────────────────
+    // ── STEP 3: 3번째 카드 (있을 경우) ───────────────────
     if (pCards[2]) {
-      await new Promise(r => setTimeout(r, 250));
-      const ps2 = createCardSlot(`ps-2`);
-      playerEl.appendChild(ps2);
-      slots.player.push(ps2);
-      await new Promise(r => setTimeout(r, 180));
+      setBacStatus('🃏 플레이어 추가 카드...');
+      await sleep(400);
+      const ps2 = createCardSlot('ps-2'); playerEl.appendChild(ps2); slots.player.push(ps2);
+      await sleep(400);
       await flipCard(ps2, pCards[2]);
       updateLiveScore('player', pCards);
-      await new Promise(r => setTimeout(r, 160));
+      await sleep(300);
     }
 
     if (bCards[2]) {
-      await new Promise(r => setTimeout(r, 250));
-      const bs2 = createCardSlot(`bs-2`);
-      bankerEl.appendChild(bs2);
-      slots.banker.push(bs2);
-      await new Promise(r => setTimeout(r, 180));
+      setBacStatus('🃏 뱅커 추가 카드...');
+      await sleep(400);
+      const bs2 = createCardSlot('bs-2'); bankerEl.appendChild(bs2); slots.banker.push(bs2);
+      await sleep(400);
       await flipCard(bs2, bCards[2]);
       updateLiveScore('banker', bCards);
-      await new Promise(r => setTimeout(r, 160));
+      await sleep(300);
     }
 
-    // ── 최종 점수 확정 표시 ───────────────────
+    // ── STEP 4: 최종 점수 확정 ───────────────────────────
+    await sleep(400);
     document.getElementById('playerTotal').textContent = res.player.total;
     document.getElementById('bankerTotal').textContent = res.banker.total;
+    document.getElementById('playerTotal').classList.add('flash');
+    document.getElementById('bankerTotal').classList.add('flash');
 
-    await new Promise(r => setTimeout(r, 400));
+    await sleep(600);
 
-    // ── 승자 강조 ─────────────────────────────
+    // ── STEP 5: 승자 강조 + 카드 글로우 ─────────────────
     const pSide = document.getElementById('baccarat-player-side');
     const bSide = document.getElementById('baccarat-banker-side');
     if (res.winner === 'player' || res.winner === 'tie') pSide.classList.add('winner');
     if (res.winner === 'banker' || res.winner === 'tie') bSide.classList.add('winner');
 
-    // 승자 쪽 카드에 golden glow
-    const winnerSlots = res.winner === 'tie'
-      ? [...slots.player, ...slots.banker]
-      : slots[res.winner];
-    winnerSlots.forEach(s => s.style.filter = 'drop-shadow(0 0 8px rgba(240,192,64,.8))');
+    const winSlots = res.winner === 'tie' ? [...slots.player,...slots.banker] : slots[res.winner];
+    winSlots.forEach(s => s.classList.add('win-glow'));
 
-    // ── 비드로드 ─────────────────────────────
+    // ── 비드로드 업데이트 ────────────────────────────────
     bacBeadHistory.push(res.winner);
     updateBeadRoad();
 
-    // ── 결과 메시지 ───────────────────────────
+    // ── 결과 메시지 ──────────────────────────────────────
     const rb = document.getElementById('baccaratResult');
     rb.className = 'result-box ' + (res.won ? 'won' : 'lost');
     const winnerName = res.winner === 'player' ? '👤 플레이어' : res.winner === 'banker' ? '🏦 뱅커' : '🤝 타이';
     rb.innerHTML = res.won
-      ? `🎉 <b>${winnerName} 승리!</b> &nbsp;+${res.win_amount.toLocaleString()}P&nbsp; ${res.natural ? '<span style="color:var(--gold)">✨ NATURAL</span>' : ''}`
-      : `😢 낙첨 &nbsp;<span style="opacity:.7;font-size:13px">(${winnerName} 승) &nbsp; P:${res.player.total} / B:${res.banker.total}</span>`;
+      ? `🎉 <b>${winnerName} 승리!</b> &nbsp;<span style="color:var(--gold);font-size:18px">+${res.win_amount.toLocaleString()}P</span> ${res.natural ? '&nbsp;<span style="color:var(--gold)">✨ NATURAL</span>' : ''}`
+      : `😢 낙첨 &nbsp;<span style="opacity:.6;font-size:13px">${winnerName} 승 &nbsp;|&nbsp; P:${res.player.total} &nbsp; B:${res.banker.total}</span>`;
 
     if (res.won) showWinEffect(res.win_amount);
     await refreshPoints();

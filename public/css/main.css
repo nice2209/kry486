@@ -464,8 +464,8 @@ input{font-family:inherit}
   background:rgba(0,0,0,.35);
   border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
-  padding:20px 24px;min-width:170px;
-  flex:1;max-width:250px;
+  padding:20px 24px;min-width:200px;
+  flex:1;max-width:320px;
   transition:all .4s;
 }
 .baccarat-side.winner{
@@ -476,93 +476,145 @@ input{font-family:inherit}
 .side-label{font-size:13px;font-weight:800;margin-bottom:14px;letter-spacing:2px;text-transform:uppercase}
 .player-label{color:#60a5fa}
 .banker-label{color:#f87171}
+/* ================================================================
+   BACCARAT CARD SYSTEM – Evolution Style
+   ================================================================ */
 .cards-area{
-  display:flex;gap:10px;justify-content:center;
-  margin-bottom:14px;min-height:104px;align-items:center;flex-wrap:wrap;
-  perspective:600px;
+  display:flex;gap:8px;justify-content:center;
+  margin-bottom:18px;min-height:130px;align-items:flex-end;flex-wrap:wrap;
+  perspective:800px;
 }
 
-/* ── 카드 슬롯(뒤집기 컨테이너) ── */
+/* ── 카드 슬롯 ── */
 .card-slot{
-  width:64px;height:96px;
+  width:76px;height:112px;
   position:relative;
-  perspective:600px;
+  perspective:800px;
+  /* 슬라이드인 등장 */
+  animation:cardDrop .32s cubic-bezier(.22,1.2,.36,1) both;
 }
+@keyframes cardDrop{
+  from{transform:translateY(-40px) scale(.8);opacity:0}
+  to{transform:translateY(0) scale(1);opacity:1}
+}
+
 .card-inner{
   width:100%;height:100%;
   position:relative;
   transform-style:preserve-3d;
-  transition:transform .55s cubic-bezier(.4,0,.2,1);
+  /* 에볼루션은 천천히 뒤집힘 – 0.9초 */
+  transition:transform .9s cubic-bezier(.45,.05,.55,.95);
 }
 .card-slot.flipped .card-inner{
   transform:rotateY(180deg);
 }
 
-/* 카드 앞면 / 뒷면 공통 */
+/* 앞/뒷면 공통 */
 .card-face{
   position:absolute;inset:0;
   border-radius:10px;
   backface-visibility:hidden;
   -webkit-backface-visibility:hidden;
-}
-
-/* ── 뒷면 (에볼루션 스타일 딥블루) ── */
-.card-back{
-  background:linear-gradient(135deg,#0f2167,#1a3a8f);
-  border:2px solid rgba(100,150,255,.35);
-  box-shadow:0 4px 14px rgba(0,0,0,.6);
-  display:flex;align-items:center;justify-content:center;
   overflow:hidden;
 }
+
+/* ── 뒷면: 에볼루션 딥블루 카드백 ── */
+.card-back{
+  background:linear-gradient(160deg,#0b1d6e 0%,#112695 40%,#0b1d6e 100%);
+  border:2px solid rgba(120,160,255,.3);
+  box-shadow:0 6px 20px rgba(0,0,0,.7);
+}
+/* 뒷면 내부 패턴 */
 .card-back::before{
   content:'';
-  position:absolute;inset:6px;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:6px;
-  background:repeating-linear-gradient(
-    45deg,
-    transparent,transparent 4px,
-    rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 5px
-  );
+  position:absolute;inset:5px;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:7px;
 }
+/* 뒷면 다이아 패턴 격자 */
 .card-back::after{
-  content:'♦';
-  font-size:32px;color:rgba(255,255,255,.15);
-  position:relative;z-index:1;
+  content:'';
+  position:absolute;inset:9px;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0,rgba(255,255,255,.05) 1px,transparent 0,transparent 50%),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0,rgba(255,255,255,.05) 1px,transparent 0,transparent 50%);
+  background-size:8px 8px;
+  border-radius:5px;
+}
+/* 뒷면 중앙 로고 */
+.card-back-logo{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:28px;color:rgba(255,255,255,.18);
+  z-index:2;pointer-events:none;
+  text-shadow:0 0 10px rgba(255,255,255,.1);
 }
 
-/* ── 앞면 ── */
+/* ── 앞면: 실제 카드처럼 ── */
 .card-front{
   transform:rotateY(180deg);
-  background:linear-gradient(145deg,#fff 0%,#f7f7f7 100%);
-  color:#111;
-  border:1px solid #d0d0d0;
-  box-shadow:0 6px 20px rgba(0,0,0,.55);
-  display:grid;
-  grid-template-rows:auto 1fr auto;
-  padding:5px 6px;
+  background:#fff;
+  border:1.5px solid #c8c8c8;
+  box-shadow:0 8px 24px rgba(0,0,0,.6);
+  display:flex;flex-direction:column;
+  padding:0;
 }
-.card-front.red{ color:#dc2626; }
-.cf-tl{ font-size:11px;font-weight:900;line-height:1.15;text-align:left; }
-.cf-center{
-  display:flex;align-items:center;justify-content:center;
-  font-size:30px;line-height:1;
-}
-.cf-br{ font-size:11px;font-weight:900;line-height:1.15;text-align:right;transform:rotate(180deg); }
+.card-front.red .cf-val,.card-front.red .cf-suit-sm{ color:#d40000; }
+.card-front.black .cf-val,.card-front.black .cf-suit-sm{ color:#111; }
 
-/* 카드 슬롯 등장 (옆에서 미끄러져 들어오는 효과) */
-@keyframes cardSlideIn{
-  from{transform:translateY(-24px) scale(.85);opacity:0}
-  to{transform:translateY(0) scale(1);opacity:1}
+/* 카드 앞면 – 좌상단 */
+.cf-corner-tl{
+  position:absolute;top:5px;left:6px;
+  display:flex;flex-direction:column;align-items:center;line-height:1;
 }
-.card-slot{animation:cardSlideIn .28s cubic-bezier(.34,1.4,.64,1)}
+/* 카드 앞면 – 우하단 (뒤집힌 복사본) */
+.cf-corner-br{
+  position:absolute;bottom:5px;right:6px;
+  display:flex;flex-direction:column;align-items:center;line-height:1;
+  transform:rotate(180deg);
+}
+.cf-val{font-size:14px;font-weight:900;line-height:1}
+.cf-suit-sm{font-size:12px;line-height:1;margin-top:1px}
 
-/* 레거시 호환 */
+/* 중앙 대형 문양 */
+.cf-center-suit{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:42px;line-height:1;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.1));
+}
+
+/* 10·J·Q·K 카드용 큰 값 표시 */
+.cf-face-big{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:22px;font-weight:900;line-height:1;text-align:center;
+}
+
+/* 카드 테두리 장식선 */
+.card-front::after{
+  content:'';
+  position:absolute;inset:4px;
+  border:0.5px solid rgba(0,0,0,.06);
+  border-radius:7px;
+  pointer-events:none;
+}
+
+/* 점수 애니메이션 */
+@keyframes scoreFlash{
+  0%{transform:scale(1.4);opacity:.6}
+  100%{transform:scale(1);opacity:1}
+}
+.total-box.flash{animation:scoreFlash .4s ease}
+
+/* 카드 금빛 글로우 (승자) */
+.card-slot.win-glow .card-inner{
+  filter:drop-shadow(0 0 10px rgba(240,192,64,.9));
+}
+
+/* 플레이스홀더 */
 .card-placeholder{
-  width:64px;height:96px;
-  background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.12);
-  border-radius:10px;display:flex;align-items:center;justify-content:center;
-  font-size:20px;color:rgba(255,255,255,.15);
+  width:76px;height:112px;
+  background:rgba(255,255,255,.03);
+  border:2px dashed rgba(255,255,255,.1);
+  border-radius:10px;
 }
 .baccarat-center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:44px}
 .baccarat-vs{
