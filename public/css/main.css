@@ -521,100 +521,144 @@ input{font-family:inherit}
   position:relative;
 }
 
-/* ── 카드 딜 영역 ── */
+/* ── 카드 딜 영역 (이미지: 플레이어카드 | 점수 | 뱅커카드 가로) ── */
 .ev-cards-area{
   display:flex;align-items:center;justify-content:center;
-  gap:0;padding:18px 10px 10px;
-  flex-shrink:0;
+  padding:16px 10px 24px;
+  flex-shrink:0;position:relative;
 }
-.ev-side{display:flex;align-items:flex-end}
-.ev-side-player .ev-cards-row{flex-direction:row-reverse} /* 플레이어는 오른쪽→왼쪽 */
+.ev-side{display:flex;align-items:center}
+/* 플레이어 카드: 오른쪽에서 왼쪽으로 (점수 바깥쪽부터) */
+.ev-side-player .ev-cards-row{flex-direction:row-reverse}
 .ev-side-banker  .ev-cards-row{flex-direction:row}
 
 .ev-cards-row{
-  display:flex;gap:-8px;align-items:flex-end;
-  min-height:100px;
+  display:flex;align-items:flex-end;min-height:96px;
   perspective:600px;
 }
 /* 카드 겹치기 */
-.ev-cards-row .card-slot{margin-left:-14px}
-.ev-cards-row .card-slot:first-child{margin-left:0}
-.ev-side-player .ev-cards-row .card-slot{margin-left:0;margin-right:-14px}
-.ev-side-player .ev-cards-row .card-slot:first-child{margin-right:0}
+.ev-cards-row .card-slot + .card-slot{margin-left:-16px}
+.ev-side-player .ev-cards-row .card-slot + .card-slot{margin-left:0;margin-right:-16px}
 
-/* ── 중앙 점수판 ── */
+/* ── 중앙 점수판 (이미지: PLAYER [숫자] BANKER 가로) ── */
 .ev-score-center{
-  display:flex;align-items:center;gap:0;
-  flex-shrink:0;margin:0 10px;
-  flex-direction:column;
+  display:flex;align-items:center;justify-content:center;
+  gap:0;flex-shrink:0;
+  flex-direction:row; /* 가로 배치 */
+  position:relative;
 }
-.ev-score-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
-.ev-score-label{font-size:10px;font-weight:900;letter-spacing:2px;opacity:.7}
-.ev-sl-player{color:#60a5fa}
-.ev-sl-banker{color:#f87171}
+.ev-score-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 12px;
+}
+.ev-score-label{
+  font-size:10px;font-weight:900;letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:2px;
+}
+.ev-sl-player{color:#93c5fd}
+.ev-sl-banker{color:#fca5a5}
 .ev-score-num{
-  font-size:42px;font-weight:900;color:#fff;line-height:1;
-  min-width:52px;text-align:center;
-  transition:all .3s;
+  font-size:48px;font-weight:900;color:#fff;line-height:1;
+  min-width:56px;text-align:center;transition:all .3s;
 }
 .ev-score-num.flash{animation:evScoreFlash .5s ease}
-@keyframes evScoreFlash{0%{transform:scale(1)}50%{transform:scale(1.25);color:#fbbf24}100%{transform:scale(1)}}
+@keyframes evScoreFlash{
+  0%{transform:scale(1)}
+  40%{transform:scale(1.3);color:#fbbf24}
+  100%{transform:scale(1)}
+}
 .ev-score-divider{
-  font-size:11px;font-weight:900;color:rgba(255,255,255,.3);
-  letter-spacing:1px;margin:2px 0;min-height:16px;
-  text-align:center;
+  font-size:12px;font-weight:900;color:rgba(255,255,255,.25);
+  padding:0 8px;min-height:20px;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:2px;text-align:center;
 }
 .natural-badge{
+  position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
   font-size:11px;font-weight:900;color:#fff;
   background:linear-gradient(135deg,#d97706,#f59e0b);
-  padding:4px 10px;border-radius:6px;margin-top:4px;
+  padding:3px 12px;border-radius:20px;
   animation:natPop .35s cubic-bezier(.34,1.56,.64,1);
-  white-space:nowrap;
+  white-space:nowrap;z-index:5;
 }
-@keyframes natPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes natPop{from{transform:translateX(-50%) scale(0);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
 
-/* ── 배팅 테이블 펠트 (하단) ── */
+/* ── 배팅 테이블 펠트 (이미지 정확 재현) ── */
 .ev-bet-table{
   display:grid;
-  grid-template-columns:80px 1fr 70px 1fr 80px;
-  flex:1;
-  border-top:2px solid rgba(255,255,255,.08);
-  position:relative;
+  grid-template-columns:72px 1fr 80px 1fr 72px;
+  border-top:1px solid rgba(255,255,255,.1);
+  position:relative;min-height:100px;
 }
 .ev-bet-cell{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;padding:10px 6px;
-  border-right:1px solid rgba(255,255,255,.06);
-  cursor:pointer;transition:all .2s;position:relative;
-  user-select:none;
+  gap:3px;padding:8px 4px;
+  border-right:1px solid rgba(255,255,255,.08);
+  cursor:pointer;transition:background .18s;position:relative;
+  user-select:none;overflow:hidden;
 }
 .ev-bet-cell:last-child{border-right:none}
-.ev-bet-cell:hover{background:rgba(255,255,255,.05)}
-.ev-bet-cell:active{transform:scale(.98)}
-.ev-bet-cell:disabled{pointer-events:none;opacity:.4}
+.ev-bet-cell:hover{filter:brightness(1.15)}
+.ev-bet-cell:active{filter:brightness(.9)}
 
-/* 셀 라벨들 */
-.ev-cell-label{font-size:10px;color:rgba(255,255,255,.45);text-align:center;line-height:1.3}
-.ev-cell-odds {font-size:11px;font-weight:900;color:rgba(255,255,255,.35)}
-.ev-cell-top-label{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.5px}
-.ev-cell-main-label{font-size:15px;font-weight:900;letter-spacing:1px}
-.ev-cell-odds-big{font-size:13px;font-weight:900;color:rgba(255,255,255,.5)}
-.ev-cell-amt{font-size:12px;font-weight:700;color:var(--gold);min-height:16px}
-.ev-cell-chips{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:28px;align-items:center}
+/* 셀 라벨 */
+.ev-cell-label{font-size:10px;color:rgba(255,255,255,.5);text-align:center;line-height:1.35;font-weight:600}
+.ev-cell-odds{font-size:11px;font-weight:900;color:rgba(255,255,255,.4)}
+.ev-cell-top-label{
+  font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.5px;
+  background:rgba(0,0,0,.3);padding:1px 6px;border-radius:20px;
+}
+.ev-cell-main-label{font-size:14px;font-weight:900;letter-spacing:.5px;text-align:center}
+.ev-cell-odds-big{
+  font-size:18px;font-weight:900;
+  color:#fff;letter-spacing:.5px;
+}
+.ev-cell-amt{
+  font-size:11px;font-weight:700;color:#fbbf24;
+  min-height:14px;text-align:center;
+}
+.ev-cell-chips{
+  display:flex;flex-wrap:wrap;gap:2px;justify-content:center;
+  min-height:26px;align-items:center;
+}
 
-/* 각 셀 색상 */
-.ev-cell-player{background:rgba(37,99,235,.08)}
-.ev-cell-player .ev-cell-main-label{color:#93c5fd}
-.ev-cell-player.winner-zone{background:rgba(37,99,235,.2);box-shadow:inset 0 0 30px rgba(37,99,235,.2)}
-.ev-cell-banker{background:rgba(185,28,28,.08)}
-.ev-cell-banker .ev-cell-main-label{color:#fca5a5}
-.ev-cell-banker.winner-zone{background:rgba(185,28,28,.2);box-shadow:inset 0 0 30px rgba(185,28,28,.2)}
-.ev-cell-tie{background:rgba(21,128,61,.08)}
-.ev-cell-tie .ev-cell-main-label{color:#86efac}
-.ev-cell-tie.winner-zone{background:rgba(21,128,61,.25);box-shadow:inset 0 0 30px rgba(21,128,61,.25)}
-.ev-cell-pp,.ev-cell-bp{background:rgba(88,28,135,.07)}
-.ev-cell-pp .ev-cell-label,.ev-cell-bp .ev-cell-label{color:rgba(216,180,254,.6)}
-.ev-cell-pp.winner-zone,.ev-cell-bp.winner-zone{background:rgba(88,28,135,.2)}
+/* ── 셀 색상 (이미지 기준) ── */
+/* 플레이어 보너스 */
+.ev-cell-pp{background:linear-gradient(180deg,rgba(29,78,216,.25),rgba(29,78,216,.1))}
+.ev-cell-pp .ev-cell-label{color:#93c5fd}
+.ev-cell-pp.winner-zone{background:rgba(37,99,235,.35);box-shadow:inset 0 0 20px rgba(37,99,235,.3)}
+
+/* 플레이어 */
+.ev-cell-player{background:linear-gradient(180deg,rgba(29,78,216,.18),rgba(29,78,216,.06))}
+.ev-cell-player .ev-cell-main-label{color:#bfdbfe}
+.ev-cell-player .ev-cell-top-label{color:#93c5fd}
+.ev-cell-player.winner-zone{
+  background:linear-gradient(180deg,rgba(37,99,235,.35),rgba(37,99,235,.15));
+  box-shadow:inset 0 0 30px rgba(37,99,235,.25),0 0 20px rgba(37,99,235,.3);
+}
+
+/* 무승부 */
+.ev-cell-tie{background:linear-gradient(180deg,rgba(21,128,61,.25),rgba(21,128,61,.1))}
+.ev-cell-tie .ev-cell-main-label{color:#bbf7d0}
+.ev-cell-tie .ev-cell-odds-big{color:#4ade80}
+.ev-cell-tie.winner-zone{
+  background:linear-gradient(180deg,rgba(21,128,61,.4),rgba(21,128,61,.2));
+  box-shadow:inset 0 0 30px rgba(21,128,61,.3),0 0 20px rgba(21,128,61,.4);
+}
+
+/* 뱅커 */
+.ev-cell-banker{background:linear-gradient(180deg,rgba(185,28,28,.18),rgba(185,28,28,.06))}
+.ev-cell-banker .ev-cell-main-label{color:#fecaca}
+.ev-cell-banker .ev-cell-top-label{color:#fca5a5}
+.ev-cell-banker.winner-zone{
+  background:linear-gradient(180deg,rgba(220,38,38,.35),rgba(220,38,38,.15));
+  box-shadow:inset 0 0 30px rgba(220,38,38,.25),0 0 20px rgba(220,38,38,.3);
+}
+
+/* 뱅커 보너스 */
+.ev-cell-bp{background:linear-gradient(180deg,rgba(185,28,28,.25),rgba(185,28,28,.1))}
+.ev-cell-bp .ev-cell-label{color:#fca5a5}
+.ev-cell-bp.winner-zone{background:rgba(220,38,38,.35);box-shadow:inset 0 0 20px rgba(220,38,38,.3)}
 
 /* 스택 칩 */
 .stacked-chip{
@@ -763,21 +807,22 @@ input{font-family:inherit}
 .ev-double-btn:hover{background:rgba(240,192,64,.15)}
 .ev-double-btn:disabled{opacity:.3;cursor:not-allowed}
 
-/* ══ ⑤ 배팅 잠금 오버레이 ══ */
+/* ══ ⑤ 배팅 잠금 - 컨트롤바만 비활성화 (카드 영역 블러 없음) ══ */
 .ev-locked-overlay{
+  /* 컨트롤바 위에만 표시 - 카드/테이블 영역은 그대로 보임 */
   position:absolute;left:0;right:0;bottom:0;
-  height:calc(100% - 38px); /* 타이틀바 제외 */
+  height:72px; /* 컨트롤바 높이만 */
   z-index:20;
-  background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,.5);
   display:flex;align-items:center;justify-content:center;
-  backdrop-filter:blur(2px);
+  /* backdrop-filter 제거 - 블러 없음 */
 }
 .ev-locked-overlay.hidden{display:none}
 .ev-locked-msg{
-  font-size:15px;font-weight:900;color:rgba(255,255,255,.6);
+  font-size:13px;font-weight:900;color:rgba(255,255,255,.7);
   letter-spacing:2px;
-  background:rgba(0,0,0,.6);padding:12px 28px;border-radius:30px;
-  border:1px solid rgba(255,255,255,.1);
+  background:rgba(0,0,0,.7);padding:8px 22px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.12);
 }
 
 /* ══ 카드 슬롯 & 3D 플립 ══ */
@@ -1883,6 +1928,7 @@ input{font-family:inherit}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.win-toast{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);color:var(--green)}
 .toast.error-toast{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--red)}
+.toast.info-toast{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.4);color:#60a5fa}
 
 /* ===== PARTICLE CANVAS ===== */
 #particleCanvas{position:absolute;inset:0;pointer-events:none;z-index:0}

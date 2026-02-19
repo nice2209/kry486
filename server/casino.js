@@ -132,60 +132,95 @@ router.post('/baccarat', authMiddleware, (req, res) => {
   const bankerPairWon = bankerCards.length >= 2 && bankerCards[0].point === bankerCards[1].point;
 
   // ── 배당 계산 ────────────────────────────────────────────────
-  // 배당률: player×2, banker×1.95, tie×9, pair×12
+  // ★ 타이(무승부) 규칙:
+  //   - TIE 배팅: 타이 시 ×9 지급, 타이 아니면 배팅금 전액 환불(=원금 반환, 순손실 0)
+  //   - PLAYER/BANKER 배팅: 타이 시 push(원금 환불, 손실 없음)
+  //   - PLAYER/BANKER 배팅: 승/패 시 정상 정산
   let totalWin = 0;
   const betResults = {};
 
   const calcWin = (type, betAmt) => {
     if (!betAmt) return 0;
-    let won = false;
-    let mult = 0;
-    if (type === 'player')     { won = winner === 'player'; mult = 2.00; }
-    if (type === 'banker')     { won = winner === 'banker'; mult = 1.95; }
-    if (type === 'tie')        { won = winner === 'tie';    mult = 9.00; }
-    if (type === 'playerPair') { won = playerPairWon;       mult = 12.00; }
-    if (type === 'bankerPair') { won = bankerPairWon;       mult = 12.00; }
-    const win = won ? Math.floor(betAmt * mult) : 0;
-    betResults[type] = { bet: betAmt, won, win };
-    return win;
+    let returnAmt = 0; // 실제 돌려받는 금액 (원금+순이익 합계)
+
+    if (type === 'player') {
+      if (winner === 'player')      returnAmt = Math.floor(betAmt * 2.00); // 순이익 1배
+      else if (winner === 'tie')    returnAmt = betAmt;                    // push: 원금 환불
+      else                          returnAmt = 0;                         // 패
+    } else if (type === 'banker') {
+      if (winner === 'banker')      returnAmt = Math.floor(betAmt * 1.95); // 순이익 0.95배
+      else if (winner === 'tie')    returnAmt = betAmt;                    // push: 원금 환불
+      else                          returnAmt = 0;                         // 패
+    } else if (type === 'tie') {
+      if (winner === 'tie')         returnAmt = Math.floor(betAmt * 9.00); // 순이익 8배
+      else                          returnAmt = betAmt;                    // ★ 타이 아니면 환불
+    } else if (type === 'playerPair') {
+      returnAmt = playerPairWon ? Math.floor(betAmt * 12.00) : 0;
+    } else if (type === 'bankerPair') {
+      returnAmt = bankerPairWon ? Math.floor(betAmt * 12.00) : 0;
+    }
+
+    const won = returnAmt > betAmt;    // 순이익이 있어야 won
+    const push = returnAmt === betAmt; // 원금 환불 = push
+    betResults[type] = { bet: betAmt, won, push, win: returnAmt };
+    return returnAmt;
   };
 
   if (!isDemo) {
     Object.keys(bets).forEach(k => { totalWin += calcWin(k, bets[k]); });
   }
 
+  // net_change: totalWin - totalBet (타이push면 0, 환불이면 차감 없음)
   const netChange = totalWin - totalBet;
   const newPoints = isDemo ? user.points : user.points - totalBet + totalWin;
+
+  // ── 실시간 배팅 내역 저장 (live_bets 컬렉션) ─────────────────
+  if (!isDemo && totalBet > 0) {
+    const liveBetEntry = {
+      id: uuidv4(),
+      user_id: user.id,
+      nickname: user.nickname,
+      bets: { ...bets },
+      winner,
+      totalBet,
+      totalWin,
+      created_at: new Date().toISOString()
+    };
+    // 최근 50개만 유지
+    const liveBets = db.get('live_bets').value() || [];
+    const updated = [liveBetEntry, ...liveBets].slice(0, 50);
+    db.set('live_bets', updated).write();
+  }
 
   // ── DB 저장 ──────────────────────────────────────────────────
   if (!isDemo && totalBet > 0) {
     db.get('users').find({ id: user.id }).assign({
       points: newPoints,
       total_bet: user.total_bet + totalBet,
-      total_won: user.total_won + totalWin
+      total_won: (user.total_won || 0) + (netChange > 0 ? netChange : 0)
     }).write();
 
     const betDesc = Object.keys(bets).filter(k => bets[k] > 0)
-      .map(k => ({ player:'플레이어', banker:'뱅커', tie:'타이', playerPair:'플레이어페어', bankerPair:'뱅커페어' }[k]))
+      .map(k => ({ player:'플레이어', banker:'뱅커', tie:'타이', playerPair:'P페어', bankerPair:'B페어' }[k]))
       .join('+');
+    const resultDesc = winner === 'player' ? '플레이어승' : winner === 'banker' ? '뱅커승' : '타이(무승부)';
     db.get('transactions').push({
       id: uuidv4(), user_id: user.id,
-      type: totalWin > totalBet ? 'win' : 'loss',
+      type: netChange > 0 ? 'win' : netChange === 0 ? 'push' : 'loss',
       amount: netChange, balance_after: newPoints,
-      desc: `바카라 [${betDesc}] - ${winner === 'player' ? '플레이어' : winner === 'banker' ? '뱅커' : '타이'} 승`,
+      desc: `바카라 [${betDesc}] - ${resultDesc}${netChange === 0 ? ' (환불)' : ''}`,
       created_at: new Date().toISOString()
     }).write();
   }
 
-  // 주 배팅 기준 won/win_amount (레거시 호환)
   const mainType = Object.keys(bets).find(k => bets[k] > 0) || bet_type || 'player';
-  const mainWon = betResults[mainType] ? betResults[mainType].won : false;
 
   res.json({
     success: true, winner, bet_type: mainType,
     player: { cards: playerCards, total: playerTotal },
     banker: { cards: bankerCards, total: bankerTotal },
-    won: totalWin > 0,
+    won: netChange > 0,
+    push: netChange === 0 && totalBet > 0, // 타이 push
     win_amount: totalWin,
     net_change: netChange,
     points: newPoints,
@@ -194,6 +229,15 @@ router.post('/baccarat', authMiddleware, (req, res) => {
     bet_results: betResults,
     demo: isDemo
   });
+});
+
+// =========================================
+// 실시간 배팅 내역 조회 (바카라 라이브 채팅)
+// =========================================
+router.get('/baccarat/live-bets', authMiddleware, (req, res) => {
+  let liveBets = [];
+  try { liveBets = db.get('live_bets').value() || []; } catch(e) {}
+  res.json({ bets: liveBets.slice(0, 30) });
 });
 
 // =========================================

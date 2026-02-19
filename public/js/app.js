@@ -740,10 +740,15 @@ function showBacResult(res, earned) {
   else if (earned < 0) earnHTML = `<div class="ev-res-earn" style="color:#f87171">${earned.toLocaleString()}P</div>`;
   else earnHTML = `<div class="ev-res-earn" style="color:rgba(255,255,255,.4)">배팅 없음</div>`;
 
+  // 타이 push 설명
+  let pushNote = '';
+  if (res.push) pushNote = '<div style="font-size:11px;color:#4ade80;margin-top:4px">✓ 플레이어/뱅커 배팅 환불</div>';
+
   box.innerHTML = `
     <div class="ev-res-winner" style="color:${wcolor}">${wname}</div>
     <div class="ev-res-detail">P: ${res.player.total} &nbsp;|&nbsp; B: ${res.banker.total}
       ${res.natural ? '&nbsp;|&nbsp;<span style="color:#fbbf24">NATURAL</span>' : ''}</div>
+    ${pushNote}
     ${earnHTML}
   `;
   ov.classList.remove('hidden');
@@ -801,37 +806,58 @@ function updateBigRoad() {
   }).join('');
 }
 
-// ── 실시간 배팅 채팅 시뮬레이션 ──────────────────────────────
-const FAKE_NICKS = ['user***21','win***99','lucky***','bet***5','pro***9','sky***1','ace***77','max***3'];
-const FAKE_SIDES = ['player','banker','tie','player','banker','player','banker'];
+// ── 실시간 배팅 채팅 (실제 DB 조회) ─────────────────────────
 let chatInterval = null;
+let lastChatCount = 0;
 
-function addChatItem(nick, side, amt) {
+function addChatItem(nick, side, amt, isResult) {
   const list = document.getElementById('evChatList');
   if (!list) return;
-  const sideLabel = side==='player'?'플레이어':side==='banker'?'뱅커':'타이';
-  const sideClass = side==='player'?'ev-chat-side-p':side==='banker'?'ev-chat-side-b':'ev-chat-side-t';
+  const sideMap = { player:'플레이어', banker:'뱅커', tie:'무승부', playerPair:'P보너스', bankerPair:'B보너스' };
+  const classMap = { player:'ev-chat-side-p', banker:'ev-chat-side-b', tie:'ev-chat-side-t', playerPair:'ev-chat-side-p', bankerPair:'ev-chat-side-b' };
+  const sides = Object.keys(amt).filter(k => amt[k] > 0);
+  if (!sides.length) return;
+  const mainSide = sides[0];
+  const total = Object.values(amt).reduce((s,v)=>s+v,0);
+
   const div = document.createElement('div');
-  div.className = 'ev-chat-item';
-  div.innerHTML = `<span class="ev-chat-nick">${nick}</span>
-    <span class="${sideClass}">${sideLabel}</span>
-    <span class="ev-chat-amt">${(amt/1000).toFixed(0)}K</span>`;
+  div.className = 'ev-chat-item' + (isResult ? ' ev-chat-result' : '');
+  div.innerHTML = `
+    <span class="ev-chat-nick">${nick}</span>
+    <span class="${classMap[mainSide]||'ev-chat-side-p'}">${sideMap[mainSide]||mainSide}</span>
+    <span class="ev-chat-amt">${total>=1000?(total/1000).toFixed(0)+'K':total+'P'}</span>
+  `;
   list.appendChild(div);
-  // 최대 30개 유지
-  while (list.children.length > 30) list.removeChild(list.firstChild);
+  while (list.children.length > 40) list.removeChild(list.firstChild);
   list.scrollTop = list.scrollHeight;
 }
 
+async function fetchLiveBets() {
+  if (!token) return;
+  try {
+    const data = await api('GET', '/api/casino/baccarat/live-bets');
+    if (!data.bets) return;
+    // 새로운 항목만 추가
+    const newItems = data.bets.slice(0, data.bets.length - lastChatCount);
+    lastChatCount = data.bets.length;
+    newItems.reverse().forEach(b => {
+      addChatItem(maskNick(b.nickname), b.bets, b.bets);
+    });
+  } catch(e) {}
+}
+
+function maskNick(nick) {
+  if (!nick) return 'user***';
+  if (nick.length <= 3) return nick + '***';
+  return nick.slice(0, 2) + '***' + nick.slice(-1);
+}
+
 function startFakeChat() {
+  // 배팅 페이즈에 실제 DB 폴링 (3초마다)
   if (chatInterval) return;
-  chatInterval = setInterval(() => {
-    if (bacState.phase !== BAC_PHASES.BETTING) return;
-    const nick = FAKE_NICKS[Math.floor(Math.random()*FAKE_NICKS.length)];
-    const side = FAKE_SIDES[Math.floor(Math.random()*FAKE_SIDES.length)];
-    const amounts = [1000,5000,10000,50000,100000];
-    const amt = amounts[Math.floor(Math.random()*amounts.length)];
-    addChatItem(nick, side, amt);
-  }, 800 + Math.random()*1200);
+  lastChatCount = 0;
+  fetchLiveBets();
+  chatInterval = setInterval(fetchLiveBets, 3000);
 }
 function stopFakeChat() {
   if (chatInterval) { clearInterval(chatInterval); chatInterval = null; }
@@ -952,9 +978,19 @@ async function runBaccaratDeal() {
   // 포인트 업데이트 & 결과 계산
   await refreshPoints();
   let earned = 0;
-  if (totalBet > 0 && res.won) earned = res.win_amount;
-  else if (totalBet > 0 && !res.won) earned = -totalBet;
-  if (earned > 0) showWinEffect(earned);
+  if (totalBet > 0) {
+    if (res.push) {
+      // 타이 push: 원금 환불, 손실 없음
+      earned = 0;
+      showToast('무승부! 배팅금 환불 ✓', 'info');
+    } else if (res.won) {
+      earned = res.net_change; // 순이익
+      if (earned > 0) showWinEffect(earned);
+    } else {
+      earned = -totalBet;
+    }
+  }
+  if (!res.push && !res.won && totalBet > 0) { /* 패배 */ }
 
   // 결과 오버레이 표시
   showBacResult(res, earned);
@@ -1823,7 +1859,7 @@ let toastTimer;
 function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show' + (type === 'error' ? ' error-toast' : type === 'win' ? ' win-toast' : '');
+  t.className = 'toast show' + (type === 'error' ? ' error-toast' : type === 'win' ? ' win-toast' : type === 'info' ? ' info-toast' : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
