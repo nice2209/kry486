@@ -17,6 +17,7 @@
       <a href="#" onclick="showPage('sports')" id="nav-sports"><i class="fa fa-futbol"></i> 스포츠</a>
       <a href="#" onclick="showPage('casino')" id="nav-casino"><i class="fa fa-dice"></i> 카지노</a>
       <a href="#" onclick="showPage('minigame')" id="nav-minigame"><i class="fa fa-gamepad"></i> 미니게임</a>
+      <a href="#" onclick="showPage('ranking')" id="nav-ranking"><i class="fa fa-ranking-star"></i> 랭킹</a>
       <a href="#" onclick="showPage('event')" id="nav-event"><i class="fa fa-gift"></i> 이벤트</a>
     </nav>
     <div class="header-right" id="headerRight">
@@ -217,31 +218,81 @@
       <!-- 바카라 -->
       <div id="casino-baccarat" class="casino-game-area">
         <h2 class="game-title">🃏 바카라</h2>
-        <div class="baccarat-table">
-          <div class="baccarat-side" id="baccarat-player-side">
-            <div class="side-label">플레이어</div>
-            <div class="cards-area" id="playerCards">
-              <div class="card-placeholder">?</div>
-              <div class="card-placeholder">?</div>
+
+        <!-- 바카라 룰 안내 -->
+        <div class="baccarat-rule-bar">
+          <span>🂠 A=1점 &nbsp;|&nbsp; 2~9=액면가 &nbsp;|&nbsp; 10·J·Q·K=0점 &nbsp;|&nbsp; 합산 1의 자리 &nbsp;|&nbsp; <b>내추럴 8·9 즉시 결과</b></span>
+          <span class="rule-detail-btn" onclick="toggleBacRule()">상세규칙 ▼</span>
+        </div>
+        <div id="baccaratRuleDetail" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;font-size:12px;color:var(--text-muted);line-height:1.8">
+          <b style="color:var(--gold)">3번째 카드 규칙 (정통 바카라)</b><br>
+          ✦ 플레이어 합 0~5 → 3번째 카드 뽑기 / 6~7 → 스탠드<br>
+          ✦ 뱅커 0~2 → 무조건 드로우<br>
+          ✦ 뱅커 3 → 플레이어 3번째 카드가 8이 아닐 때 드로우<br>
+          ✦ 뱅커 4 → 플레이어 3번째 2~7일 때 드로우<br>
+          ✦ 뱅커 5 → 플레이어 3번째 4~7일 때 드로우<br>
+          ✦ 뱅커 6 → 플레이어 3번째 6~7일 때 드로우<br>
+          ✦ 뱅커 7 → 항상 스탠드<br>
+          ✦ 내추럴(8·9) → 즉시 종료, 추가 카드 없음
+        </div>
+
+        <!-- 점수 히스토리 (비드로드) -->
+        <div class="bead-road-wrap">
+          <div class="bead-road-title">최근 결과</div>
+          <div class="bead-road" id="beadRoad"></div>
+        </div>
+
+        <!-- 바카라 테이블 -->
+        <div class="baccarat-table-wrap">
+          <div class="baccarat-felt">
+            <div class="baccarat-side" id="baccarat-player-side">
+              <div class="side-label player-label">👤 PLAYER</div>
+              <div class="cards-area" id="playerCards">
+                <div class="card-placeholder">?</div>
+                <div class="card-placeholder">?</div>
+              </div>
+              <div class="bac-score-wrap">
+                <div class="bac-score-label">점수</div>
+                <div class="total-box" id="playerTotal">-</div>
+              </div>
             </div>
-            <div class="total-box" id="playerTotal">-</div>
-          </div>
-          <div class="baccarat-vs">VS</div>
-          <div class="baccarat-side" id="baccarat-banker-side">
-            <div class="side-label">뱅커</div>
-            <div class="cards-area" id="bankerCards">
-              <div class="card-placeholder">?</div>
-              <div class="card-placeholder">?</div>
+            <div class="baccarat-center-col">
+              <div class="baccarat-vs">VS</div>
+              <div class="natural-badge" id="naturalBadge" style="display:none">🌟 NATURAL!</div>
             </div>
-            <div class="total-box" id="bankerTotal">-</div>
+            <div class="baccarat-side" id="baccarat-banker-side">
+              <div class="side-label banker-label">🏦 BANKER</div>
+              <div class="cards-area" id="bankerCards">
+                <div class="card-placeholder">?</div>
+                <div class="card-placeholder">?</div>
+              </div>
+              <div class="bac-score-wrap">
+                <div class="bac-score-label">점수</div>
+                <div class="total-box" id="bankerTotal">-</div>
+              </div>
+            </div>
           </div>
         </div>
+
         <div class="result-box" id="baccaratResult"></div>
+
         <div class="bet-controls">
-          <div class="bet-type-btns">
-            <button class="bet-type active" data-type="player" onclick="selectBetType(this)">플레이어 <span style="color:var(--text-muted);font-size:12px">(×2.00)</span></button>
-            <button class="bet-type" data-type="banker" onclick="selectBetType(this)">뱅커 <span style="color:var(--text-muted);font-size:12px">(×1.95)</span></button>
-            <button class="bet-type" data-type="tie" onclick="selectBetType(this)">타이 <span style="color:var(--text-muted);font-size:12px">(×9.00)</span></button>
+          <div class="bet-type-btns bac-bet-btns">
+            <button class="bet-type bac-player active" data-type="player" onclick="selectBetType(this)">
+              <span class="bac-btn-icon">👤</span>
+              <span class="bac-btn-name">플레이어</span>
+              <span class="bac-btn-odd">×2.00</span>
+            </button>
+            <button class="bet-type bac-tie" data-type="tie" onclick="selectBetType(this)">
+              <span class="bac-btn-icon">🤝</span>
+              <span class="bac-btn-name">타이</span>
+              <span class="bac-btn-odd">×9.00</span>
+            </button>
+            <button class="bet-type bac-banker" data-type="banker" onclick="selectBetType(this)">
+              <span class="bac-btn-icon">🏦</span>
+              <span class="bac-btn-name">뱅커</span>
+              <span class="bac-btn-odd">×1.95</span>
+            </button>
           </div>
           <div class="bet-amount-row">
             <div class="quick-bets">
@@ -252,7 +303,7 @@
               <button onclick="setAmount(100000)">10만</button>
             </div>
             <input type="number" id="baccaratAmount" placeholder="배팅금액 입력" min="1000" step="1000"/>
-            <button class="btn btn-gold" onclick="playBaccarat()"><i class="fa fa-play"></i> 게임 시작</button>
+            <button class="btn btn-gold" onclick="playBaccarat()" id="baccaratBtn"><i class="fa fa-play"></i> 게임 시작</button>
           </div>
         </div>
       </div>
@@ -489,6 +540,7 @@
             <button class="atab" onclick="showMyTab('withdraw')">환전</button>
             <button class="atab" onclick="showMyTab('history')">거래내역</button>
             <button class="atab" onclick="showMyTab('mybets')">배팅내역</button>
+            <button class="atab" onclick="showMyTab('report')">🚨 신고</button>
           </div>
 
           <div id="mytab-charge" class="mytab-content">
@@ -532,8 +584,51 @@
             <h3>🎯 스포츠 배팅 내역</h3>
             <div id="myBetsDetail" class="tx-list"></div>
           </div>
+
+          <div id="mytab-report" class="mytab-content hidden">
+            <h3>🚨 문제 신고</h3>
+            <p class="info-text">게임 오류, 부정행위, 기타 문제를 신고해 주세요.<br>관리자가 신속히 확인합니다.</p>
+            <div class="form-group">
+              <label>신고 유형</label>
+              <select id="reportType" style="width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:14px">
+                <option value="game_error">🎮 게임 오류</option>
+                <option value="cheating">🚫 부정행위 의심</option>
+                <option value="point_error">💰 포인트 오류</option>
+                <option value="other">📝 기타</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>제목</label>
+              <input type="text" id="reportTitle" placeholder="신고 제목을 입력하세요" style="width:100%"/>
+            </div>
+            <div class="form-group">
+              <label>상세 내용</label>
+              <textarea id="reportContent" rows="5" placeholder="문제 상황을 자세히 설명해 주세요..." style="width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:14px;resize:vertical;font-family:inherit"></textarea>
+            </div>
+            <button class="btn btn-gold" onclick="submitReport()"><i class="fa fa-paper-plane"></i> 신고 제출</button>
+            <div id="reportMsg" class="msg-box" style="display:none;margin-top:12px"></div>
+            <hr style="border-color:var(--border);margin:20px 0"/>
+            <h4 style="color:var(--text-muted);font-size:14px;margin-bottom:12px">📋 내 신고 내역</h4>
+            <div id="myReportList" class="tx-list"></div>
+          </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ====================== RANKING ====================== -->
+  <div id="page-ranking" class="page">
+    <div class="container page-content">
+      <div class="section-title" style="margin-top:28px">
+        <h2>🏆 명예의 전당 – 유저 랭킹</h2>
+      </div>
+      <div class="ranking-tabs">
+        <button class="rtab active" onclick="showRankTab('points')"><i class="fa fa-coins"></i> 보유 포인트</button>
+        <button class="rtab" onclick="showRankTab('won')"><i class="fa fa-trophy"></i> 총 당첨금</button>
+        <button class="rtab" onclick="showRankTab('bet')"><i class="fa fa-fire"></i> 총 배팅금</button>
+      </div>
+      <div class="ranking-podium" id="rankingPodium"></div>
+      <div class="ranking-list" id="rankingList"></div>
     </div>
   </div>
 
@@ -587,6 +682,7 @@
         <button class="adtab active" onclick="showAdTab('users')">회원 관리</button>
         <button class="adtab" onclick="showAdTab('matches')">경기 관리</button>
         <button class="adtab" onclick="showAdTab('transactions')">거래 내역</button>
+        <button class="adtab" onclick="showAdTab('reports')">🚨 신고 관리</button>
         <button class="adtab" onclick="showAdTab('settings')">설정</button>
       </div>
 
@@ -617,6 +713,15 @@
 
       <div id="adtab-transactions" class="adtab-content hidden">
         <div id="adminTxList" class="admin-list"></div>
+      </div>
+
+      <div id="adtab-reports" class="adtab-content hidden">
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-outline" onclick="loadAdminReports('all')">전체</button>
+          <button class="btn btn-sm btn-outline" onclick="loadAdminReports('pending')">미처리</button>
+          <button class="btn btn-sm btn-outline" onclick="loadAdminReports('resolved')">처리완료</button>
+        </div>
+        <div id="adminReportList" class="admin-list"></div>
       </div>
 
       <div id="adtab-settings" class="adtab-content hidden">

@@ -28,6 +28,8 @@ app.use('/api/sports', require('./sports'));
 app.use('/api/casino', require('./casino'));
 app.use('/api/minigame', require('./minigame'));
 app.use('/api/admin', require('./admin'));
+app.use('/api/report', require('./report'));
+app.use('/api/ranking', require('./ranking'));
 
 // ===== SPA 라우팅 =====
 app.get('*', (req, res) => {

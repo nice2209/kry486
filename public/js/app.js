@@ -208,6 +208,7 @@ function showPage(page, sub) {
   if (page === 'minigame') { sub ? showMini(sub) : showMini('oddeven'); }
   if (page === 'mypage') loadMypage();
   if (page === 'admin') loadAdminPage();
+  if (page === 'ranking') loadRanking('points');
 
   document.getElementById('nav').classList.remove('open');
 }
@@ -428,44 +429,97 @@ function setSlotsAmount(n) { document.getElementById('slotsAmount').value = n; }
 function setRouletteAmount(n) { document.getElementById('rouletteAmount').value = n; }
 
 // ---- BACCARAT ----
+let bacBeadHistory = []; // 비드로드 히스토리
+
+function toggleBacRule() {
+  const el = document.getElementById('baccaratRuleDetail');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateBeadRoad() {
+  const el = document.getElementById('beadRoad');
+  if (!el) return;
+  el.innerHTML = bacBeadHistory.slice(-20).map(r => {
+    const cls = r === 'player' ? 'bead-p' : r === 'banker' ? 'bead-b' : 'bead-t';
+    const label = r === 'player' ? 'P' : r === 'banker' ? 'B' : 'T';
+    return `<div class="bead ${cls}">${label}</div>`;
+  }).join('');
+}
+
 async function playBaccarat() {
   if (!token) { openModal('loginModal'); return; }
   const amt = document.getElementById('baccaratAmount').value;
   if (!amt || amt < 1000) { showToast('배팅금액을 입력하세요.', 'error'); return; }
 
-  // Reset cards
+  const btn = document.getElementById('baccaratBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 진행중...'; }
+
+  // Reset
   document.getElementById('playerCards').innerHTML = '<div class="card-placeholder">?</div><div class="card-placeholder">?</div>';
   document.getElementById('bankerCards').innerHTML = '<div class="card-placeholder">?</div><div class="card-placeholder">?</div>';
   document.getElementById('playerTotal').textContent = '-';
   document.getElementById('bankerTotal').textContent = '-';
   document.getElementById('baccaratResult').className = 'result-box';
-  document.getElementById('baccaratResult').textContent = '게임 진행중...';
+  document.getElementById('baccaratResult').textContent = '🃏 카드 배분중...';
   document.getElementById('baccarat-player-side').classList.remove('winner');
   document.getElementById('baccarat-banker-side').classList.remove('winner');
+  const naturalBadge = document.getElementById('naturalBadge');
+  if (naturalBadge) naturalBadge.style.display = 'none';
 
   try {
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 300));
     const res = await api('POST', '/api/casino/baccarat', { bet_type: selectedBetType, amount: amt });
 
-    // Animate cards one by one
-    renderBaccaratCards('playerCards', res.player.cards);
-    await new Promise(r => setTimeout(r, 300));
-    renderBaccaratCards('bankerCards', res.banker.cards);
-    await new Promise(r => setTimeout(r, 300));
+    // 카드 딜링 - 순서대로 한장씩 (플1→뱅1→플2→뱅2→플3→뱅3)
+    const allDeals = [];
+    const maxLen = Math.max(res.player.cards.length, res.banker.cards.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (res.player.cards[i]) allDeals.push({ side: 'player', card: res.player.cards[i] });
+      if (res.banker.cards[i]) allDeals.push({ side: 'banker', card: res.banker.cards[i] });
+    }
 
+    const playerEl = document.getElementById('playerCards');
+    const bankerEl = document.getElementById('bankerCards');
+    playerEl.innerHTML = '';
+    bankerEl.innerHTML = '';
+
+    for (const deal of allDeals) {
+      await new Promise(r => setTimeout(r, 350));
+      const el = deal.side === 'player' ? playerEl : bankerEl;
+      el.insertAdjacentHTML('beforeend', makeCardHTML(deal.card));
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+
+    // 점수 표시
     document.getElementById('playerTotal').textContent = res.player.total;
     document.getElementById('bankerTotal').textContent = res.banker.total;
 
-    // Highlight winner side
+    // 내추럴 배지
+    if (res.natural && naturalBadge) naturalBadge.style.display = 'block';
+
+    await new Promise(r => setTimeout(r, 300));
+
+    // 승자 강조
     if (res.winner === 'player') document.getElementById('baccarat-player-side').classList.add('winner');
     else if (res.winner === 'banker') document.getElementById('baccarat-banker-side').classList.add('winner');
+    // 타이는 양쪽 다 강조
+    if (res.winner === 'tie') {
+      document.getElementById('baccarat-player-side').classList.add('winner');
+      document.getElementById('baccarat-banker-side').classList.add('winner');
+    }
+
+    // 비드로드 업데이트
+    bacBeadHistory.push(res.winner);
+    updateBeadRoad();
 
     const rb = document.getElementById('baccaratResult');
     rb.className = 'result-box ' + (res.won ? 'won' : 'lost');
-    const winnerName = res.winner === 'player' ? '플레이어' : res.winner === 'banker' ? '뱅커' : '타이';
-    rb.textContent = res.won
-      ? `🎉 당첨! ${winnerName} 승! +${res.win_amount.toLocaleString()}P`
-      : `😢 낙첨 (${winnerName} 승)`;
+    const winnerName = res.winner === 'player' ? '👤 플레이어' : res.winner === 'banker' ? '🏦 뱅커' : '🤝 타이';
+    rb.innerHTML = res.won
+      ? `🎉 <b>${winnerName} 승리!</b> +${res.win_amount.toLocaleString()}P ${res.natural ? '✨ NATURAL' : ''}`
+      : `😢 낙첨 (${winnerName} 승리) &nbsp; <span style="opacity:.6;font-size:13px">P:${res.player.total} B:${res.banker.total}</span>`;
 
     if (res.won) showWinEffect(res.win_amount);
     await refreshPoints();
@@ -473,21 +527,32 @@ async function playBaccarat() {
     document.getElementById('baccaratResult').className = 'result-box lost';
     document.getElementById('baccaratResult').textContent = e.message;
     showToast(e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-play"></i> 게임 시작'; }
   }
+}
+
+function makeCardHTML(c) {
+  const RED_SUITS = ['♥', '♦'];
+  // card 형식: "♠A", "♥10", "♦K" 등
+  let suit = '', val = '';
+  if (c && c.card) {
+    // 첫 글자가 suit
+    suit = c.card[0];
+    val = c.card.slice(1);
+  }
+  const isRed = RED_SUITS.includes(suit);
+  return `<div class="playing-card ${isRed ? 'red' : ''}">
+    <div class="card-top-left">${suit}${val}</div>
+    <div class="card-suit-big">${suit}</div>
+    <div class="card-val-big">${val}</div>
+    <div class="card-bottom-right">${suit}${val}</div>
+  </div>`;
 }
 
 function renderBaccaratCards(elId, cards) {
   const el = document.getElementById(elId);
-  const RED_SUITS = ['♥', '♦'];
-  el.innerHTML = cards.map(c => {
-    const suit = c.card ? c.card[0] : '';
-    const val = c.card ? c.card.slice(1) : c;
-    const isRed = RED_SUITS.includes(suit);
-    return `<div class="playing-card ${isRed ? 'red' : ''}">
-      <div class="card-suit">${suit}</div>
-      <div class="card-val">${val}</div>
-    </div>`;
-  }).join('');
+  el.innerHTML = cards.map(c => makeCardHTML(c)).join('');
 }
 
 // ---- SLOTS ----
@@ -943,6 +1008,8 @@ async function loadMypage() {
       if (withdrawTab) withdrawTab.style.display = '';
       showMyTab('charge');
     }
+    // 신고 내역 로드
+    loadMyReports();
   } catch {}
 }
 
@@ -1065,13 +1132,15 @@ async function loadAdminPage() {
 function showAdTab(tab) {
   document.querySelectorAll('.adtab-content').forEach(t => t.classList.add('hidden'));
   document.getElementById('adtab-' + tab).classList.remove('hidden');
-  document.querySelectorAll('.adtab').forEach((b, i) => {
-    const tabs = ['users', 'matches', 'transactions', 'settings'];
-    b.classList.toggle('active', tabs[i] === tab);
+  document.querySelectorAll('.adtab').forEach(b => {
+    const tabs = ['users', 'matches', 'transactions', 'reports', 'settings'];
+    const btnTab = b.getAttribute('onclick')?.match(/showAdTab\('(\w+)'\)/)?.[1];
+    b.classList.toggle('active', btnTab === tab);
   });
   if (tab === 'users') adminLoadUsers();
   if (tab === 'matches') adminLoadMatches();
   if (tab === 'transactions') adminLoadTx();
+  if (tab === 'reports') loadAdminReports('all');
 }
 
 async function adminLoadUsers(search = '') {
@@ -1280,4 +1349,195 @@ function showToast(msg, type = 'success') {
   t.className = 'toast show' + (type === 'error' ? ' error-toast' : type === 'win' ? ' win-toast' : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ===========================
+//  RANKING
+// ===========================
+let currentRankTab = 'points';
+
+async function loadRanking(type = 'points') {
+  currentRankTab = type;
+
+  // 탭 active
+  document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+  const activeTab = document.querySelector(`.rtab[onclick*="${type}"]`);
+  if (activeTab) activeTab.classList.add('active');
+
+  const podiumEl = document.getElementById('rankingPodium');
+  const listEl = document.getElementById('rankingList');
+  if (!podiumEl || !listEl) return;
+
+  podiumEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fa fa-spinner fa-spin"></i> 불러오는 중...</div>';
+  listEl.innerHTML = '';
+
+  try {
+    const data = await api('GET', `/api/ranking?type=${type}&limit=20`);
+    const ranking = data.ranking;
+    if (!ranking.length) {
+      podiumEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">랭킹 데이터가 없습니다.</div>';
+      return;
+    }
+
+    const typeLabel = type === 'points' ? '보유 포인트' : type === 'won' ? '총 당첨금' : '총 배팅금';
+    const getValue = u => type === 'points' ? u.points : type === 'won' ? u.total_won : u.total_bet;
+
+    // 포디움 (1~3위)
+    const top3 = ranking.slice(0, 3);
+    const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean); // 2위-1위-3위 순
+    const podiumHeight = ['140px', '180px', '110px'];
+    const podiumPos = [1, 0, 2]; // index in original top3
+
+    podiumEl.innerHTML = `
+      <div class="podium-wrap">
+        ${podiumOrder.map((u, i) => {
+          const rank = podiumPos[i] + 1;
+          const medals = ['🥇','🥈','🥉'];
+          const h = podiumHeight[i];
+          return `<div class="podium-item rank-${rank}">
+            <div class="podium-avatar">${medals[rank-1]}</div>
+            <div class="podium-nick">${u.nickname}</div>
+            <div class="podium-val">${getValue(u).toLocaleString()}P</div>
+            <div class="podium-bar" style="height:${h}">
+              <span class="podium-rank">${rank}위</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+    // 4위 이하 리스트
+    const rest = ranking.slice(3);
+    if (!rest.length) { listEl.innerHTML = ''; return; }
+
+    listEl.innerHTML = `
+      <div class="rank-list-header">
+        <span>순위</span><span>닉네임</span><span>${typeLabel}</span>
+      </div>
+      ${rest.map(u => `
+        <div class="rank-list-row">
+          <span class="rank-num">${u.rank}위</span>
+          <span class="rank-nick">${u.nickname}</span>
+          <span class="rank-val">${getValue(u).toLocaleString()}P</span>
+        </div>`).join('')}`;
+  } catch (e) {
+    podiumEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--red)">${e.message}</div>`;
+  }
+}
+
+function showRankTab(type) {
+  loadRanking(type);
+}
+
+// ===========================
+//  REPORT (신고)
+// ===========================
+async function submitReport() {
+  if (!token) { openModal('loginModal'); return; }
+  const type = document.getElementById('reportType').value;
+  const title = document.getElementById('reportTitle').value.trim();
+  const content = document.getElementById('reportContent').value.trim();
+  const msgEl = document.getElementById('reportMsg');
+
+  if (!title || !content) {
+    msgEl.style.display = 'block';
+    msgEl.className = 'msg-box error';
+    msgEl.textContent = '제목과 내용을 모두 입력하세요.';
+    return;
+  }
+
+  try {
+    const res = await api('POST', '/api/report', { type, title, content });
+    msgEl.style.display = 'block';
+    msgEl.className = 'msg-box success';
+    msgEl.textContent = '✅ ' + res.message;
+    document.getElementById('reportTitle').value = '';
+    document.getElementById('reportContent').value = '';
+    loadMyReports();
+  } catch (e) {
+    msgEl.style.display = 'block';
+    msgEl.className = 'msg-box error';
+    msgEl.textContent = e.message;
+  }
+}
+
+async function loadMyReports() {
+  const el = document.getElementById('myReportList');
+  if (!el) return;
+  try {
+    const data = await api('GET', '/api/report/my');
+    const typeNames = { game_error:'🎮 게임 오류', cheating:'🚫 부정행위', point_error:'💰 포인트 오류', other:'📝 기타' };
+    if (!data.reports.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">신고 내역이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = data.reports.map(r => `
+      <div class="tx-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div style="display:flex;justify-content:space-between;width:100%">
+          <span style="font-weight:700;color:#fff">${typeNames[r.type]||r.type} – ${r.title}</span>
+          <span class="tx-badge ${r.status === 'resolved' ? 'win' : 'pending'}">${r.status === 'resolved' ? '✅ 처리완료' : '⏳ 검토중'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted)">${r.content.slice(0,80)}${r.content.length>80?'…':''}</div>
+        ${r.admin_reply ? `<div style="font-size:12px;padding:6px 10px;background:var(--bg3);border-radius:6px;color:var(--gold)">💬 관리자 답변: ${r.admin_reply}</div>` : ''}
+        <div style="font-size:11px;color:var(--text-dim)">${new Date(r.created_at).toLocaleString('ko-KR')}</div>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+// ===========================
+//  ADMIN - 신고 관리
+// ===========================
+async function loadAdminReports(status = 'all') {
+  const el = document.getElementById('adminReportList');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fa fa-spinner fa-spin"></i></div>';
+  try {
+    const data = await api('GET', `/api/report/admin/list?status=${status}`);
+    const typeNames = { game_error:'🎮 게임 오류', cheating:'🚫 부정행위', point_error:'💰 포인트 오류', other:'📝 기타' };
+    if (!data.reports.length) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">신고 내역이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = data.reports.map(r => `
+      <div class="admin-user-card" style="flex-direction:column;align-items:flex-start;gap:8px" id="report-${r.id}">
+        <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px">
+          <div>
+            <span style="font-weight:800;color:#fff">${typeNames[r.type]||r.type}</span>
+            <span style="margin-left:8px;color:var(--text-muted);font-size:13px">by ${r.nickname} (${r.username})</span>
+          </div>
+          <span class="tx-badge ${r.status === 'resolved' ? 'win' : 'pending'}">${r.status === 'resolved' ? '✅ 처리완료' : '⏳ 미처리'}</span>
+        </div>
+        <div style="font-weight:700;color:var(--gold)">${r.title}</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5">${r.content}</div>
+        ${r.admin_reply ? `<div style="font-size:12px;padding:6px 10px;background:var(--bg3);border-radius:6px;color:var(--gold)">💬 답변: ${r.admin_reply}</div>` : ''}
+        <div style="font-size:11px;color:var(--text-dim)">${new Date(r.created_at).toLocaleString('ko-KR')}</div>
+        ${r.status !== 'resolved' ? `
+          <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
+            <input type="text" id="reply-${r.id}" placeholder="답변 입력 (선택)" style="flex:1;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px"/>
+            <button class="btn btn-sm btn-gold" onclick="resolveReport('${r.id}')">✅ 처리완료</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteReport('${r.id}')">🗑 삭제</button>
+          </div>` : `<button class="btn btn-sm btn-danger" onclick="deleteReport('${r.id}')">🗑 삭제</button>`}
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+async function resolveReport(id) {
+  const reply = document.getElementById(`reply-${id}`)?.value || '';
+  try {
+    await api('POST', `/api/report/admin/${id}/resolve`, { admin_reply: reply });
+    showToast('✅ 신고 처리 완료');
+    loadAdminReports();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteReport(id) {
+  if (!confirm('이 신고를 삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', `/api/report/admin/${id}`);
+    showToast('🗑 신고 삭제 완료');
+    loadAdminReports();
+  } catch (e) { showToast(e.message, 'error'); }
 }

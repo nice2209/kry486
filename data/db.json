@@ -6,11 +6,11 @@
       "password": "$2a$10$IhRT7Fl05kwVlWaIbF.rE.UTQ6GSpF0YxdxlQhxlNblLb.iyP3CPO",
       "nickname": "관리자",
       "role": "admin",
-      "points": 9845499,
+      "points": 10010499,
       "total_charged": 0,
       "total_withdrawn": 0,
       "total_bet": 630000,
-      "total_won": 475500,
+      "total_won": 640500,
       "status": "active",
       "referral_code": "ADMIN",
       "referred_by": null,
@@ -24,11 +24,11 @@
       "password": "$2a$10$sEEws.vH04OZdkpHz1GjpeJIXvsphOYjqk42PI8zIE6Bx0A.SUJT2",
       "nickname": "ee",
       "role": "user",
-      "points": 49950,
+      "points": 56900,
       "total_charged": 0,
       "total_withdrawn": 0,
-      "total_bet": 15000,
-      "total_won": 1950,
+      "total_bet": 21000,
+      "total_won": 14900,
       "status": "active",
       "referral_code": "ADMIN123394",
       "referred_by": null,
@@ -48,9 +48,9 @@
       "odds": 1.65,
       "amount": 100000,
       "potential_win": 165000,
-      "status": "pending",
+      "status": "won",
       "created_at": "2026-02-19T01:44:26.787Z",
-      "settled_at": null
+      "settled_at": "2026-02-19T02:28:02.140Z"
     }
   ],
   "transactions": [
@@ -242,6 +242,69 @@
       "balance_after": 49950,
       "desc": "슬롯머신 [🍊 🍋 🍋] 낙첨",
       "created_at": "2026-02-19T02:00:08.301Z"
+    },
+    {
+      "id": "78c32afd-77c4-4bfc-8e8c-854868111f8c",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 165000,
+      "balance_after": 10175499,
+      "desc": "스포츠 배팅 당첨 (자동정산): 맨시티 vs 맨유",
+      "created_at": "2026-02-19T02:28:02.139Z"
+    },
+    {
+      "id": "33033aa5-c537-4d3e-8b1a-ff7a1559e1a2",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 48950,
+      "desc": "바카라 - 플레이어 배팅 낙첨",
+      "created_at": "2026-02-19T02:28:37.827Z"
+    },
+    {
+      "id": "034d0091-b696-4746-9780-b25dc6e54308",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "win",
+      "amount": 1000,
+      "balance_after": 49950,
+      "desc": "바카라 - 플레이어 배팅 당첨",
+      "created_at": "2026-02-19T02:28:40.292Z"
+    },
+    {
+      "id": "cb6b45ca-0abe-459b-8841-26f2e6ce8b1c",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "win",
+      "amount": 950,
+      "balance_after": 50900,
+      "desc": "바카라 - 뱅커 배팅 당첨",
+      "created_at": "2026-02-19T02:28:49.866Z"
+    },
+    {
+      "id": "e5e373b5-1d21-4dae-9311-6b8ea4eff18d",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 49900,
+      "desc": "바카라 - 타이 배팅 낙첨",
+      "created_at": "2026-02-19T02:28:52.817Z"
+    },
+    {
+      "id": "d383662d-e21e-4409-8218-0dd2eb02e8a7",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 48900,
+      "desc": "바카라 - 타이 배팅 낙첨",
+      "created_at": "2026-02-19T02:28:54.335Z"
+    },
+    {
+      "id": "14eee4d4-e4cb-4dfc-a274-6deb4b634bfa",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "win",
+      "amount": 8000,
+      "balance_after": 56900,
+      "desc": "바카라 - 타이 배팅 당첨",
+      "created_at": "2026-02-19T02:28:55.766Z"
     }
   ],
   "games": {
@@ -254,11 +317,12 @@
         "home_odds": 1.65,
         "draw_odds": 3.8,
         "away_odds": 5.2,
-        "status": "live",
-        "home_score": 7,
-        "away_score": 4,
-        "minute": 66,
-        "start_time": "2026-02-19T01:40:09.675Z"
+        "status": "finished",
+        "home_score": 8,
+        "away_score": 7,
+        "minute": 90,
+        "start_time": "2026-02-19T01:40:09.675Z",
+        "result": "home"
       },
       {
         "id": "ed0edf6e-d44a-4034-a26e-47eb51ec0b72",
@@ -269,8 +333,8 @@
         "draw_odds": null,
         "away_odds": 1.95,
         "status": "live",
-        "home_score": 49,
-        "away_score": 53,
+        "home_score": 73,
+        "away_score": 76,
         "minute": "Q2",
         "start_time": "2026-02-19T01:40:09.675Z"
       },
@@ -282,11 +346,12 @@
         "home_odds": 2.1,
         "draw_odds": 3.4,
         "away_odds": 3.2,
-        "status": "scheduled",
-        "home_score": 0,
-        "away_score": 0,
-        "minute": 0,
-        "start_time": "2026-02-19T02:40:09.675Z"
+        "status": "finished",
+        "home_score": 16,
+        "away_score": 17,
+        "minute": 90,
+        "start_time": "2026-02-19T02:40:09.675Z",
+        "result": "away"
       },
       {
         "id": "1812c35c-d390-445d-b78d-8903a805a7e3",
@@ -297,8 +362,8 @@
         "draw_odds": null,
         "away_odds": 2.45,
         "status": "live",
-        "home_score": 10,
-        "away_score": 5,
+        "home_score": 35,
+        "away_score": 31,
         "minute": "7회",
         "start_time": "2026-02-19T01:40:09.675Z"
       },
@@ -310,11 +375,12 @@
         "home_odds": 2.3,
         "draw_odds": 3.5,
         "away_odds": 2.8,
-        "status": "scheduled",
-        "home_score": 0,
-        "away_score": 0,
-        "minute": 0,
-        "start_time": "2026-02-19T03:40:09.675Z"
+        "status": "finished",
+        "home_score": 13,
+        "away_score": 11,
+        "minute": 90,
+        "start_time": "2026-02-19T03:40:09.675Z",
+        "result": "home"
       },
       {
         "id": "a5229488-0473-4ac6-a118-1dc975db1d9f",

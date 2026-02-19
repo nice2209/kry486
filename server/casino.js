@@ -5,19 +5,79 @@ const db = require('./db');
 const { authMiddleware } = require('./auth');
 
 // =========================================
-// 바카라 (Baccarat)
+// 바카라 (Baccarat) - 정통 룰
 // =========================================
 function drawCard() {
-  const suits = ['♠','♥','♦','♣'];
-  const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const suits = ['♠', '♥', '♦', '♣'];
+  const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   const val = values[Math.floor(Math.random() * 13)];
   const suit = suits[Math.floor(Math.random() * 4)];
-  let point = parseInt(val) || 0; // A=1, J/Q/K=0
+  // A=1, 2~9=face value, 10/J/Q/K=0
+  let point = 0;
   if (val === 'A') point = 1;
-  return { card: suit + val, point: point % 10 };
+  else if (['10', 'J', 'Q', 'K'].includes(val)) point = 0;
+  else point = parseInt(val);
+  return { card: suit + val, point };
 }
+
 function handTotal(cards) {
   return cards.reduce((s, c) => s + c.point, 0) % 10;
+}
+
+/**
+ * 정통 바카라 3번째 카드 규칙
+ * https://en.wikipedia.org/wiki/Baccarat_(card_game)#Third_card_rule
+ */
+function applyThirdCardRule(playerCards, bankerCards) {
+  let pTotal = handTotal(playerCards);
+  let bTotal = handTotal(bankerCards);
+  let playerDrewThird = false;
+  let playerThirdValue = null;
+
+  // ─── Natural: 8 or 9 → 즉시 종료 ───
+  if (pTotal >= 8 || bTotal >= 8) {
+    return { playerCards, bankerCards };
+  }
+
+  // ─── 플레이어 3번째 카드 ───
+  // 플레이어 합이 0~5면 반드시 드로우, 6~7이면 스탠드
+  if (pTotal <= 5) {
+    const c = drawCard();
+    playerCards.push(c);
+    playerDrewThird = true;
+    playerThirdValue = c.point;
+    pTotal = handTotal(playerCards);
+  }
+
+  // ─── 뱅커 3번째 카드 ───
+  bTotal = handTotal(bankerCards); // 재계산
+  if (!playerDrewThird) {
+    // 플레이어가 스탠드(6~7)했을 때: 뱅커는 0~5면 드로우
+    if (bTotal <= 5) {
+      bankerCards.push(drawCard());
+    }
+  } else {
+    // 플레이어가 드로우했을 때: 뱅커 규칙표 적용
+    const p3 = playerThirdValue;
+    if (bTotal <= 2) {
+      bankerCards.push(drawCard());
+    } else if (bTotal === 3) {
+      // 플레이어 3번째가 8이 아니면 드로우
+      if (p3 !== 8) bankerCards.push(drawCard());
+    } else if (bTotal === 4) {
+      // 플레이어 3번째가 2~7이면 드로우
+      if (p3 >= 2 && p3 <= 7) bankerCards.push(drawCard());
+    } else if (bTotal === 5) {
+      // 플레이어 3번째가 4~7이면 드로우
+      if (p3 >= 4 && p3 <= 7) bankerCards.push(drawCard());
+    } else if (bTotal === 6) {
+      // 플레이어 3번째가 6~7이면 드로우
+      if (p3 === 6 || p3 === 7) bankerCards.push(drawCard());
+    }
+    // bTotal === 7: 항상 스탠드
+  }
+
+  return { playerCards, bankerCards };
 }
 
 router.post('/baccarat', authMiddleware, (req, res) => {
@@ -30,24 +90,25 @@ router.post('/baccarat', authMiddleware, (req, res) => {
   const user = db.get('users').find({ id: req.user.id }).value();
   if (user.points < amt) return res.status(400).json({ error: '포인트 부족' });
 
-  // 딜
-  const playerCards = [drawCard(), drawCard()];
-  const bankerCards = [drawCard(), drawCard()];
-  let playerTotal = handTotal(playerCards);
-  let bankerTotal = handTotal(bankerCards);
+  // 초기 2장씩 딜
+  let playerCards = [drawCard(), drawCard()];
+  let bankerCards = [drawCard(), drawCard()];
 
-  // 3번째 카드 규칙 (간략화)
-  if (playerTotal <= 5) { const c = drawCard(); playerCards.push(c); playerTotal = handTotal(playerCards); }
-  if (bankerTotal <= 5) { const c = drawCard(); bankerCards.push(c); bankerTotal = handTotal(bankerCards); }
+  // 정통 3rd card rule 적용
+  const result = applyThirdCardRule(playerCards, bankerCards);
+  playerCards = result.playerCards;
+  bankerCards = result.bankerCards;
 
-  let winner = playerTotal > bankerTotal ? 'player' : bankerTotal > playerTotal ? 'banker' : 'tie';
+  const playerTotal = handTotal(playerCards);
+  const bankerTotal = handTotal(bankerCards);
+  const winner = playerTotal > bankerTotal ? 'player' : bankerTotal > playerTotal ? 'banker' : 'tie';
 
-  // 배당
+  // 배당 계산
   let multiplier = 0;
   if (bet_type === winner) {
-    if (winner === 'banker') multiplier = 1.95;
+    if (winner === 'banker') multiplier = 1.95;   // 뱅커 수수료 5%
     else if (winner === 'player') multiplier = 2.00;
-    else multiplier = 9.00; // tie
+    else multiplier = 9.00; // 타이 배당
   }
 
   const winAmount = Math.floor(amt * multiplier);
@@ -60,10 +121,11 @@ router.post('/baccarat', authMiddleware, (req, res) => {
     total_won: user.total_won + winAmount
   }).write();
 
+  const betName = bet_type === 'player' ? '플레이어' : bet_type === 'banker' ? '뱅커' : '타이';
   db.get('transactions').push({
     id: uuidv4(), user_id: user.id, type: winAmount > 0 ? 'win' : 'loss',
     amount: netChange, balance_after: newPoints,
-    desc: `바카라 - ${bet_type === 'player' ? '플레이어' : bet_type === 'banker' ? '뱅커' : '타이'} 배팅 ${winAmount > 0 ? '당첨' : '낙첨'}`,
+    desc: `바카라 - ${betName} 배팅 ${winAmount > 0 ? '당첨' : '낙첨'}`,
     created_at: new Date().toISOString()
   }).write();
 
@@ -72,7 +134,8 @@ router.post('/baccarat', authMiddleware, (req, res) => {
     player: { cards: playerCards, total: playerTotal },
     banker: { cards: bankerCards, total: bankerTotal },
     won: bet_type === winner, win_amount: winAmount,
-    net_change: netChange, points: newPoints
+    net_change: netChange, points: newPoints,
+    natural: playerTotal >= 8 || bankerTotal >= 8
   });
 });
 
