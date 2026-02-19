@@ -903,7 +903,46 @@ async function loadMypage() {
     document.getElementById('mypgBet').textContent = (user.total_bet || 0).toLocaleString() + 'P';
     document.getElementById('mypgWon').textContent = (user.total_won || 0).toLocaleString() + 'P';
     document.getElementById('mypgReferral').textContent = user.referral_code || '-';
-    showMyTab('charge');
+
+    // 일반 유저는 충전/환전 탭 숨김
+    const chargeTab = document.querySelector('.atab[onclick*="charge"]');
+    const withdrawTab = document.querySelector('.atab[onclick*="withdraw"]');
+    const chargeContent = document.getElementById('mytab-charge');
+    const withdrawContent = document.getElementById('mytab-withdraw');
+
+    if (user.role !== 'admin') {
+      if (chargeTab) chargeTab.style.display = 'none';
+      if (withdrawTab) withdrawTab.style.display = 'none';
+      if (chargeContent) chargeContent.innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:48px;margin-bottom:16px">🔒</div>
+          <h3 style="color:#fff;margin-bottom:10px">포인트 충전</h3>
+          <p style="color:var(--text-muted);font-size:14px;line-height:1.7">
+            포인트 충전은 고객센터를 통해 진행됩니다.<br>
+            아래 채팅 버튼을 눌러 문의해 주세요.
+          </p>
+          <button class="btn btn-gold" style="margin-top:20px" onclick="alert('고객센터에 문의해 주세요.')">
+            <i class="fa fa-comment-dots"></i> 고객센터 문의
+          </button>
+        </div>`;
+      if (withdrawContent) withdrawContent.innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:48px;margin-bottom:16px">🔒</div>
+          <h3 style="color:#fff;margin-bottom:10px">포인트 환전</h3>
+          <p style="color:var(--text-muted);font-size:14px;line-height:1.7">
+            포인트 환전은 고객센터를 통해 진행됩니다.<br>
+            아래 채팅 버튼을 눌러 문의해 주세요.
+          </p>
+          <button class="btn btn-gold" style="margin-top:20px" onclick="alert('고객센터에 문의해 주세요.')">
+            <i class="fa fa-comment-dots"></i> 고객센터 문의
+          </button>
+        </div>`;
+      showMyTab('history');
+    } else {
+      if (chargeTab) chargeTab.style.display = '';
+      if (withdrawTab) withdrawTab.style.display = '';
+      showMyTab('charge');
+    }
   } catch {}
 }
 

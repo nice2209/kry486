@@ -4,16 +4,20 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
 const { authMiddleware } = require('./auth');
 
-// ===== 포인트 충전 신청 =====
+// ===== 포인트 충전 신청 (관리자만 가능) =====
 router.post('/charge', authMiddleware, (req, res) => {
+  const user = db.get('users').find({ id: req.user.id }).value();
+
+  // 일반 유저 충전 완전 차단
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: '포인트 충전은 관리자만 가능합니다. 고객센터에 문의하세요.' });
+  }
+
   const { amount } = req.body;
   const amt = parseInt(amount);
   if (!amt || amt < 10000) return res.status(400).json({ error: '최소 충전 금액은 10,000P 입니다.' });
   if (amt > 10000000) return res.status(400).json({ error: '최대 충전 금액은 10,000,000P 입니다.' });
 
-  const user = db.get('users').find({ id: req.user.id }).value();
-
-  // 실험용: 즉시 지급 (실제 서비스에서는 관리자 승인 방식)
   const newPoints = user.points + amt;
   db.get('users').find({ id: user.id }).assign({
     points: newPoints,
@@ -23,7 +27,7 @@ router.post('/charge', authMiddleware, (req, res) => {
   db.get('transactions').push({
     id: uuidv4(), user_id: user.id, type: 'charge',
     amount: amt, balance_after: newPoints,
-    desc: `포인트 충전`, status: 'approved',
+    desc: `포인트 충전 (관리자)`, status: 'approved',
     created_at: new Date().toISOString()
   }).write();
 
