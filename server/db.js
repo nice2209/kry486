@@ -1,9 +1,16 @@
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-const adapter = new FileSync(path.join(__dirname, '../data/db.json'));
+// data 폴더가 없으면 자동 생성
+const dataDir = path.join(__dirname, '../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const adapter = new FileSync(path.join(dataDir, 'db.json'));
 const db = low(adapter);
 
 // DB 기본값 초기화

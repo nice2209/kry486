@@ -1,0 +1,342 @@
+{
+  "users": [
+    {
+      "id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "username": "admin",
+      "password": "$2a$10$IhRT7Fl05kwVlWaIbF.rE.UTQ6GSpF0YxdxlQhxlNblLb.iyP3CPO",
+      "nickname": "관리자",
+      "role": "admin",
+      "points": 9845499,
+      "total_charged": 0,
+      "total_withdrawn": 0,
+      "total_bet": 630000,
+      "total_won": 475500,
+      "status": "active",
+      "referral_code": "ADMIN",
+      "referred_by": null,
+      "created_at": "2026-02-19T01:40:09.672Z",
+      "last_login": "2026-02-19T01:41:10.713Z",
+      "ip": "::ffff:127.0.0.1"
+    },
+    {
+      "id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "username": "admin123",
+      "password": "$2a$10$sEEws.vH04OZdkpHz1GjpeJIXvsphOYjqk42PI8zIE6Bx0A.SUJT2",
+      "nickname": "ee",
+      "role": "user",
+      "points": 49950,
+      "total_charged": 0,
+      "total_withdrawn": 0,
+      "total_bet": 15000,
+      "total_won": 1950,
+      "status": "active",
+      "referral_code": "ADMIN123394",
+      "referred_by": null,
+      "created_at": "2026-02-19T01:43:15.716Z",
+      "last_login": null,
+      "ip": "::ffff:127.0.0.1"
+    }
+  ],
+  "bets": [
+    {
+      "id": "b5abe0e3-121e-4bd0-8724-dff7fcc73b4b",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "match_id": "55635a4a-dda1-4845-aed2-f60fa5b4acf4",
+      "match_name": "맨시티 vs 맨유",
+      "league": "프리미어리그",
+      "pick": "home",
+      "odds": 1.65,
+      "amount": 100000,
+      "potential_win": 165000,
+      "status": "pending",
+      "created_at": "2026-02-19T01:44:26.787Z",
+      "settled_at": null
+    }
+  ],
+  "transactions": [
+    {
+      "id": "4d9a5117-ccfb-4ed0-af13-5a982b5acae5",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "admin_give",
+      "amount": 3000,
+      "balance_after": 3000,
+      "desc": "관리자 지급: 관리자 지급",
+      "created_at": "2026-02-19T01:45:00.659Z"
+    },
+    {
+      "id": "2351040f-ca86-4248-b1fb-b18908d7c48a",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 50000,
+      "balance_after": 9845499,
+      "desc": "룰렛 [17⚫] - black 당첨",
+      "created_at": "2026-02-19T01:44:45.079Z"
+    },
+    {
+      "id": "c3d00b0c-ea68-456e-8bbe-698fc9a0a017",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 50000,
+      "balance_after": 9795499,
+      "desc": "룰렛 [13⚫] - black 당첨",
+      "created_at": "2026-02-19T01:44:42.679Z"
+    },
+    {
+      "id": "10de8586-a4ef-44aa-9a90-8d7865f245e7",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 50000,
+      "balance_after": 9745499,
+      "desc": "룰렛 [4⚫] - black 당첨",
+      "created_at": "2026-02-19T01:44:38.952Z"
+    },
+    {
+      "id": "642d2e85-b8b6-431d-a98f-a23281875874",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "bet",
+      "amount": -100000,
+      "balance_after": 9695499,
+      "desc": "스포츠 배팅: 맨시티 vs 맨유 (맨시티) x1.65",
+      "created_at": "2026-02-19T01:44:26.788Z"
+    },
+    {
+      "id": "4a74241b-9c8f-4551-9db1-fa2e1908923b",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -10000,
+      "balance_after": 0,
+      "desc": "동전던지기 [뒷면] 낙첨",
+      "created_at": "2026-02-19T01:43:22.938Z"
+    },
+    {
+      "id": "0709ef53-77aa-4ad6-ac70-65b259b2f715",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "bonus",
+      "amount": 10000,
+      "balance_after": 10000,
+      "desc": "회원가입 보너스",
+      "created_at": "2026-02-19T01:43:15.718Z"
+    },
+    {
+      "id": "b506fb7f-64c2-42dd-8041-4c90f170e2da",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "loss",
+      "amount": -100000,
+      "balance_after": 9795499,
+      "desc": "바카라 - 플레이어 배팅 낙첨",
+      "created_at": "2026-02-19T01:42:44.177Z"
+    },
+    {
+      "id": "bd6b840a-0ec2-4e80-b2f3-b2a9c570f3c6",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "loss",
+      "amount": -100000,
+      "balance_after": 9895499,
+      "desc": "바카라 - 플레이어 배팅 낙첨",
+      "created_at": "2026-02-19T01:42:40.426Z"
+    },
+    {
+      "id": "72c2d1b3-5a88-409e-9279-4307560e48b3",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "loss",
+      "amount": -30000,
+      "balance_after": 9995499,
+      "desc": "동전던지기 [앞면] 낙첨",
+      "created_at": "2026-02-19T01:42:28.255Z"
+    },
+    {
+      "id": "811b6476-6b0a-49fc-a054-f55519fa9932",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 28500,
+      "balance_after": 10025499,
+      "desc": "동전던지기 [뒷면] 당첨",
+      "created_at": "2026-02-19T01:42:27.295Z"
+    },
+    {
+      "id": "18026200-dd1a-46f0-9475-a97a780839da",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 28500,
+      "balance_after": 9996999,
+      "desc": "동전던지기 [뒷면] 당첨",
+      "created_at": "2026-02-19T01:42:26.270Z"
+    },
+    {
+      "id": "720bf7f9-9a4d-4cf6-a2fe-35df0b3eb11b",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "loss",
+      "amount": -30000,
+      "balance_after": 9968499,
+      "desc": "동전던지기 [앞면] 낙첨",
+      "created_at": "2026-02-19T01:42:24.989Z"
+    },
+    {
+      "id": "48c6a63f-6d87-4b82-ba10-5a9706cab25b",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "loss",
+      "amount": -30000,
+      "balance_after": 9998499,
+      "desc": "동전던지기 [앞면] 낙첨",
+      "created_at": "2026-02-19T01:42:23.500Z"
+    },
+    {
+      "id": "4cbe57cd-11ae-41e3-9f46-c9d58605f559",
+      "user_id": "fcc8304a-a6ba-45ce-af9a-4bc295d210cd",
+      "type": "win",
+      "amount": 28500,
+      "balance_after": 10028499,
+      "desc": "동전던지기 [뒷면] 당첨",
+      "created_at": "2026-02-19T01:42:21.035Z"
+    },
+    {
+      "id": "59d4aa0c-224a-4eaf-8e8e-989b18ef23dd",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 2000,
+      "desc": "바카라 - 플레이어 배팅 낙첨",
+      "created_at": "2026-02-19T01:58:56.846Z"
+    },
+    {
+      "id": "6d1b3785-664e-4b12-ad92-d2b838471a01",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "win",
+      "amount": 950,
+      "balance_after": 2950,
+      "desc": "바카라 - 뱅커 배팅 당첨",
+      "created_at": "2026-02-19T01:59:01.771Z"
+    },
+    {
+      "id": "cc9255e2-a1f4-4ace-b815-89e1c39878e0",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 1950,
+      "desc": "바카라 - 뱅커 배팅 낙첨",
+      "created_at": "2026-02-19T01:59:05.359Z"
+    },
+    {
+      "id": "69135db9-310b-4d09-b409-a932f9e224da",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 950,
+      "desc": "바카라 - 플레이어 배팅 낙첨",
+      "created_at": "2026-02-19T01:59:09.532Z"
+    },
+    {
+      "id": "113a1fb6-3962-4ee3-a935-da8b9dbdc092",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "admin_give",
+      "amount": 50000,
+      "balance_after": 50950,
+      "desc": "관리자 지급: 관리자 지급",
+      "created_at": "2026-02-19T02:00:02.641Z"
+    },
+    {
+      "id": "8d8488fc-7d9d-44ea-974c-d11f7c380fa3",
+      "user_id": "20d5df8f-dc54-41b4-af6c-58af9f682cde",
+      "type": "loss",
+      "amount": -1000,
+      "balance_after": 49950,
+      "desc": "슬롯머신 [🍊 🍋 🍋] 낙첨",
+      "created_at": "2026-02-19T02:00:08.301Z"
+    }
+  ],
+  "games": {
+    "sports": [
+      {
+        "id": "55635a4a-dda1-4845-aed2-f60fa5b4acf4",
+        "league": "프리미어리그",
+        "home": "맨시티",
+        "away": "맨유",
+        "home_odds": 1.65,
+        "draw_odds": 3.8,
+        "away_odds": 5.2,
+        "status": "live",
+        "home_score": 7,
+        "away_score": 4,
+        "minute": 66,
+        "start_time": "2026-02-19T01:40:09.675Z"
+      },
+      {
+        "id": "ed0edf6e-d44a-4034-a26e-47eb51ec0b72",
+        "league": "NBA",
+        "home": "레이커스",
+        "away": "셀틱스",
+        "home_odds": 1.9,
+        "draw_odds": null,
+        "away_odds": 1.95,
+        "status": "live",
+        "home_score": 49,
+        "away_score": 53,
+        "minute": "Q2",
+        "start_time": "2026-02-19T01:40:09.675Z"
+      },
+      {
+        "id": "b4420b8c-d3c3-43db-92db-393d5a21514e",
+        "league": "K리그1",
+        "home": "전북",
+        "away": "울산",
+        "home_odds": 2.1,
+        "draw_odds": 3.4,
+        "away_odds": 3.2,
+        "status": "scheduled",
+        "home_score": 0,
+        "away_score": 0,
+        "minute": 0,
+        "start_time": "2026-02-19T02:40:09.675Z"
+      },
+      {
+        "id": "1812c35c-d390-445d-b78d-8903a805a7e3",
+        "league": "MLB",
+        "home": "다저스",
+        "away": "양키스",
+        "home_odds": 1.55,
+        "draw_odds": null,
+        "away_odds": 2.45,
+        "status": "live",
+        "home_score": 10,
+        "away_score": 5,
+        "minute": "7회",
+        "start_time": "2026-02-19T01:40:09.675Z"
+      },
+      {
+        "id": "c6cc5af5-142c-4c16-8f1d-935b95904ef5",
+        "league": "라리가",
+        "home": "바르셀로나",
+        "away": "레알마드리드",
+        "home_odds": 2.3,
+        "draw_odds": 3.5,
+        "away_odds": 2.8,
+        "status": "scheduled",
+        "home_score": 0,
+        "away_score": 0,
+        "minute": 0,
+        "start_time": "2026-02-19T03:40:09.675Z"
+      },
+      {
+        "id": "a5229488-0473-4ac6-a118-1dc975db1d9f",
+        "league": "챔피언스리그",
+        "home": "바이에른",
+        "away": "파리생제르맹",
+        "home_odds": 1.75,
+        "draw_odds": 3.9,
+        "away_odds": 4.5,
+        "status": "finished",
+        "home_score": 4,
+        "away_score": 7,
+        "minute": 90,
+        "start_time": "2026-02-19T01:40:09.675Z",
+        "result": "away"
+      }
+    ],
+    "minigame_results": []
+  },
+  "settings": {
+    "signup_bonus": 100000,
+    "min_bet": 1000,
+    "max_bet": 5000000
+  }
+}
