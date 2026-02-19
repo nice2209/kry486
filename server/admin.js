@@ -94,6 +94,53 @@ router.get('/transactions', adminMiddleware, (req, res) => {
   res.json({ items, total, page, totalPages: Math.ceil(total / limit) });
 });
 
+// ===== 비정상 포인트 일괄 정리 (관리자 전용) =====
+router.post('/fix-illegal-charges', adminMiddleware, (req, res) => {
+  const allTx = db.get('transactions').value();
+  const users = db.get('users').value();
+  const adminIds = new Set(users.filter(u => u.role === 'admin').map(u => u.id));
+
+  // 일반 유저의 charge 타입 트랜잭션 추출
+  const illegalCharges = allTx.filter(tx =>
+    tx.type === 'charge' && !adminIds.has(tx.user_id)
+  );
+
+  if (illegalCharges.length === 0) {
+    return res.json({ success: true, message: '비정상 충전 내역 없음', fixed: 0 });
+  }
+
+  // 유저별 불법 충전 합계
+  const byUser = {};
+  illegalCharges.forEach(tx => {
+    if (!byUser[tx.user_id]) byUser[tx.user_id] = 0;
+    byUser[tx.user_id] += tx.amount;
+  });
+
+  const fixedUsers = [];
+  Object.entries(byUser).forEach(([uid, total]) => {
+    const u = db.get('users').find({ id: uid }).value();
+    if (!u) return;
+    const newPoints = Math.max(0, u.points - total);
+    db.get('users').find({ id: uid }).assign({
+      points: newPoints,
+      total_charged: Math.max(0, u.total_charged - total)
+    }).write();
+    fixedUsers.push({ username: u.username, removed: total, newPoints });
+  });
+
+  // 불법 충전 트랜잭션 삭제
+  const illegalIds = new Set(illegalCharges.map(tx => tx.id));
+  const cleanTx = allTx.filter(tx => !illegalIds.has(tx.id));
+  db.set('transactions', cleanTx).write();
+
+  res.json({
+    success: true,
+    message: `${illegalCharges.length}건의 비정상 충전 내역 삭제 완료`,
+    fixed: illegalCharges.length,
+    affectedUsers: fixedUsers
+  });
+});
+
 // ===== 사이트 설정 =====
 router.get('/settings', adminMiddleware, (req, res) => {
   res.json(db.get('settings').value());
