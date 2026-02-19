@@ -447,82 +447,192 @@ function updateBeadRoad() {
   }).join('');
 }
 
+// ── 카드 데이터 파싱 ──────────────────────────
+function parseCard(c) {
+  const RED_SUITS = ['♥', '♦'];
+  let suit = '', val = '';
+  if (c && c.card) { suit = c.card[0]; val = c.card.slice(1); }
+  return { suit, val, isRed: RED_SUITS.includes(suit) };
+}
+
+// ── 뒷면 카드 슬롯 DOM 생성 ──────────────────
+function createCardSlot(id) {
+  const slot = document.createElement('div');
+  slot.className = 'card-slot';
+  slot.id = id;
+  slot.innerHTML = `
+    <div class="card-inner">
+      <div class="card-face card-back"></div>
+      <div class="card-face card-front" style="display:none"></div>
+    </div>`;
+  return slot;
+}
+
+// ── 앞면으로 플립 ─────────────────────────────
+function flipCard(slot, cardData) {
+  return new Promise(resolve => {
+    const { suit, val, isRed } = parseCard(cardData);
+    const front = slot.querySelector('.card-front');
+    front.className = `card-face card-front${isRed ? ' red' : ''}`;
+    front.style.display = '';
+    front.innerHTML = `
+      <div class="cf-tl">${val}<br>${suit}</div>
+      <div class="cf-center">${suit}</div>
+      <div class="cf-br">${val}<br>${suit}</div>`;
+    // 살짝 딜레이 후 플립 (CSS transition 트리거)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        slot.classList.add('flipped');
+        setTimeout(resolve, 580); // transition 완료 대기
+      });
+    });
+  });
+}
+
+// ── 점수 업데이트 (카드 플립될 때마다) ─────────
+function updateLiveScore(side, cards) {
+  const total = cards.reduce((s, c) => {
+    const { val } = parseCard(c);
+    let p = parseInt(val);
+    if (isNaN(p) || ['J','Q','K'].includes(val)) p = 0;
+    else if (val === 'A') p = 1;
+    return s + p;
+  }, 0) % 10;
+  const el = document.getElementById(side === 'player' ? 'playerTotal' : 'bankerTotal');
+  if (el) el.textContent = total;
+}
+
+// ── 메인 딜링 함수 ─────────────────────────────
 async function playBaccarat() {
   if (!token) { openModal('loginModal'); return; }
   const amt = document.getElementById('baccaratAmount').value;
   if (!amt || amt < 1000) { showToast('배팅금액을 입력하세요.', 'error'); return; }
 
   const btn = document.getElementById('baccaratBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 진행중...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 딜링중...'; }
 
-  // Reset
-  document.getElementById('playerCards').innerHTML = '<div class="card-placeholder">?</div><div class="card-placeholder">?</div>';
-  document.getElementById('bankerCards').innerHTML = '<div class="card-placeholder">?</div><div class="card-placeholder">?</div>';
+  // ── 초기화 ─────────────────────────────────
+  const playerEl = document.getElementById('playerCards');
+  const bankerEl = document.getElementById('bankerCards');
+  playerEl.innerHTML = '';
+  bankerEl.innerHTML = '';
   document.getElementById('playerTotal').textContent = '-';
   document.getElementById('bankerTotal').textContent = '-';
   document.getElementById('baccaratResult').className = 'result-box';
-  document.getElementById('baccaratResult').textContent = '🃏 카드 배분중...';
+  document.getElementById('baccaratResult').innerHTML = '';
   document.getElementById('baccarat-player-side').classList.remove('winner');
   document.getElementById('baccarat-banker-side').classList.remove('winner');
   const naturalBadge = document.getElementById('naturalBadge');
   if (naturalBadge) naturalBadge.style.display = 'none';
 
   try {
-    await new Promise(r => setTimeout(r, 300));
+    // ── API 호출 ──────────────────────────────
     const res = await api('POST', '/api/casino/baccarat', { bet_type: selectedBetType, amount: amt });
 
-    // 카드 딜링 - 순서대로 한장씩 (플1→뱅1→플2→뱅2→플3→뱅3)
-    const allDeals = [];
-    const maxLen = Math.max(res.player.cards.length, res.banker.cards.length);
-    for (let i = 0; i < maxLen; i++) {
-      if (res.player.cards[i]) allDeals.push({ side: 'player', card: res.player.cards[i] });
-      if (res.banker.cards[i]) allDeals.push({ side: 'banker', card: res.banker.cards[i] });
+    const pCards = res.player.cards;   // 2~3장
+    const bCards = res.banker.cards;   // 2~3장
+    const maxRound = Math.max(pCards.length, bCards.length);
+
+    // ── 에볼루션 딜 순서: P1→B1→P2→B2 뒷면으로 먼저 배치 ──
+    const slots = { player: [], banker: [] };
+
+    // 2장씩 뒷면 슬롯 배치 (슬라이드인)
+    for (let i = 0; i < 2; i++) {
+      await new Promise(r => setTimeout(r, 120));
+      const ps = createCardSlot(`ps-${i}`);
+      playerEl.appendChild(ps);
+      slots.player.push(ps);
+
+      await new Promise(r => setTimeout(r, 120));
+      const bs = createCardSlot(`bs-${i}`);
+      bankerEl.appendChild(bs);
+      slots.banker.push(bs);
     }
 
-    const playerEl = document.getElementById('playerCards');
-    const bankerEl = document.getElementById('bankerCards');
-    playerEl.innerHTML = '';
-    bankerEl.innerHTML = '';
+    await new Promise(r => setTimeout(r, 400));
 
-    for (const deal of allDeals) {
-      await new Promise(r => setTimeout(r, 350));
-      const el = deal.side === 'player' ? playerEl : bankerEl;
-      el.insertAdjacentHTML('beforeend', makeCardHTML(deal.card));
+    // ── 플레이어 1번 카드 플립 ─────────────────
+    await flipCard(slots.player[0], pCards[0]);
+    updateLiveScore('player', pCards.slice(0, 1));
+    await new Promise(r => setTimeout(r, 160));
+
+    // ── 뱅커 1번 카드 플립 ────────────────────
+    await flipCard(slots.banker[0], bCards[0]);
+    updateLiveScore('banker', bCards.slice(0, 1));
+    await new Promise(r => setTimeout(r, 160));
+
+    // ── 플레이어 2번 카드 플립 ─────────────────
+    await flipCard(slots.player[1], pCards[1]);
+    updateLiveScore('player', pCards.slice(0, 2));
+    await new Promise(r => setTimeout(r, 160));
+
+    // ── 뱅커 2번 카드 플립 ────────────────────
+    await flipCard(slots.banker[1], bCards[1]);
+    updateLiveScore('banker', bCards.slice(0, 2));
+    await new Promise(r => setTimeout(r, 300));
+
+    // ── 내추럴 체크 ──────────────────────────
+    if (res.natural && naturalBadge) {
+      naturalBadge.style.display = 'block';
+      await new Promise(r => setTimeout(r, 500));
     }
 
-    await new Promise(r => setTimeout(r, 200));
+    // ── 3번째 카드 (있을 경우) ────────────────
+    if (pCards[2]) {
+      await new Promise(r => setTimeout(r, 250));
+      const ps2 = createCardSlot(`ps-2`);
+      playerEl.appendChild(ps2);
+      slots.player.push(ps2);
+      await new Promise(r => setTimeout(r, 180));
+      await flipCard(ps2, pCards[2]);
+      updateLiveScore('player', pCards);
+      await new Promise(r => setTimeout(r, 160));
+    }
 
-    // 점수 표시
+    if (bCards[2]) {
+      await new Promise(r => setTimeout(r, 250));
+      const bs2 = createCardSlot(`bs-2`);
+      bankerEl.appendChild(bs2);
+      slots.banker.push(bs2);
+      await new Promise(r => setTimeout(r, 180));
+      await flipCard(bs2, bCards[2]);
+      updateLiveScore('banker', bCards);
+      await new Promise(r => setTimeout(r, 160));
+    }
+
+    // ── 최종 점수 확정 표시 ───────────────────
     document.getElementById('playerTotal').textContent = res.player.total;
     document.getElementById('bankerTotal').textContent = res.banker.total;
 
-    // 내추럴 배지
-    if (res.natural && naturalBadge) naturalBadge.style.display = 'block';
+    await new Promise(r => setTimeout(r, 400));
 
-    await new Promise(r => setTimeout(r, 300));
+    // ── 승자 강조 ─────────────────────────────
+    const pSide = document.getElementById('baccarat-player-side');
+    const bSide = document.getElementById('baccarat-banker-side');
+    if (res.winner === 'player' || res.winner === 'tie') pSide.classList.add('winner');
+    if (res.winner === 'banker' || res.winner === 'tie') bSide.classList.add('winner');
 
-    // 승자 강조
-    if (res.winner === 'player') document.getElementById('baccarat-player-side').classList.add('winner');
-    else if (res.winner === 'banker') document.getElementById('baccarat-banker-side').classList.add('winner');
-    // 타이는 양쪽 다 강조
-    if (res.winner === 'tie') {
-      document.getElementById('baccarat-player-side').classList.add('winner');
-      document.getElementById('baccarat-banker-side').classList.add('winner');
-    }
+    // 승자 쪽 카드에 golden glow
+    const winnerSlots = res.winner === 'tie'
+      ? [...slots.player, ...slots.banker]
+      : slots[res.winner];
+    winnerSlots.forEach(s => s.style.filter = 'drop-shadow(0 0 8px rgba(240,192,64,.8))');
 
-    // 비드로드 업데이트
+    // ── 비드로드 ─────────────────────────────
     bacBeadHistory.push(res.winner);
     updateBeadRoad();
 
+    // ── 결과 메시지 ───────────────────────────
     const rb = document.getElementById('baccaratResult');
     rb.className = 'result-box ' + (res.won ? 'won' : 'lost');
     const winnerName = res.winner === 'player' ? '👤 플레이어' : res.winner === 'banker' ? '🏦 뱅커' : '🤝 타이';
     rb.innerHTML = res.won
-      ? `🎉 <b>${winnerName} 승리!</b> +${res.win_amount.toLocaleString()}P ${res.natural ? '✨ NATURAL' : ''}`
-      : `😢 낙첨 (${winnerName} 승리) &nbsp; <span style="opacity:.6;font-size:13px">P:${res.player.total} B:${res.banker.total}</span>`;
+      ? `🎉 <b>${winnerName} 승리!</b> &nbsp;+${res.win_amount.toLocaleString()}P&nbsp; ${res.natural ? '<span style="color:var(--gold)">✨ NATURAL</span>' : ''}`
+      : `😢 낙첨 &nbsp;<span style="opacity:.7;font-size:13px">(${winnerName} 승) &nbsp; P:${res.player.total} / B:${res.banker.total}</span>`;
 
     if (res.won) showWinEffect(res.win_amount);
     await refreshPoints();
+
   } catch (e) {
     document.getElementById('baccaratResult').className = 'result-box lost';
     document.getElementById('baccaratResult').textContent = e.message;
@@ -532,28 +642,9 @@ async function playBaccarat() {
   }
 }
 
-function makeCardHTML(c) {
-  const RED_SUITS = ['♥', '♦'];
-  // card 형식: "♠A", "♥10", "♦K" 등
-  let suit = '', val = '';
-  if (c && c.card) {
-    // 첫 글자가 suit
-    suit = c.card[0];
-    val = c.card.slice(1);
-  }
-  const isRed = RED_SUITS.includes(suit);
-  return `<div class="playing-card ${isRed ? 'red' : ''}">
-    <div class="card-top-left">${suit}${val}</div>
-    <div class="card-suit-big">${suit}</div>
-    <div class="card-val-big">${val}</div>
-    <div class="card-bottom-right">${suit}${val}</div>
-  </div>`;
-}
-
-function renderBaccaratCards(elId, cards) {
-  const el = document.getElementById(elId);
-  el.innerHTML = cards.map(c => makeCardHTML(c)).join('');
-}
+// 레거시 호환
+function makeCardHTML(c) { return ''; }
+function renderBaccaratCards(elId, cards) {}
 
 // ---- SLOTS ----
 const SLOT_SYMBOLS = ['🍒', '🍊', '🍋', '🍇', '⭐', '🔔', '🃏', '7️⃣', '💎'];
